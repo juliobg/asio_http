@@ -1,0 +1,45 @@
+/**
+    asio_http: wrapper for integrating libcurl with boost.asio applications
+    Copyright (c) 2017 Julio Becerra Gomez
+    See COPYING for license information.
+*/
+
+#ifndef ASIO_HTTP_DATA_SINK_H
+#define ASIO_HTTP_DATA_SINK_H
+
+#include <sstream>
+
+namespace asio_http
+{
+namespace internal
+{
+class data_sink
+{
+public:
+  data_sink()
+      : m_compression(compression::none)
+  {
+  }
+  data_sink(const data_sink&) = delete;
+
+  uint32_t             write_callback(const void* data, uint32_t size, uint32_t count);
+  std::vector<uint8_t> get_data() const;
+
+  // used to find Content-Encoding: deflate headers
+  void header_callback(const std::string& header);
+
+private:
+  std::ostringstream m_data;
+
+  enum class compression
+  {
+    none,
+    deflate,
+    gzip
+  };
+  compression m_compression;
+};
+}
+}
+
+#endif
