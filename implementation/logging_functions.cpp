@@ -115,7 +115,7 @@ http_request_stats get_request_stats(curl_easy* ceasy, std::chrono::steady_clock
 void http_request_stats_logging(const http_request_result& result)
 {
   const std::string& url = result.request->get_url().to_string();
-  DLOG_F(INFO, "Request to %s completed, code %d", url.c_str(), result.error_code);
+  DLOG_F(INFO, "Request to %s completed, result: %s", url.c_str(), result.error.message().c_str());
   DLOG_F(INFO, "  Downloaded bytes: %" PRId64, result.stats.downloaded_bytes);
   DLOG_F(INFO, "  Uploaded bytes: %" PRId64, result.stats.uploaded_bytes);
   DLOG_F(INFO, "  Name lookup time: %.5f s", result.stats.name_lookup_time_s.count());

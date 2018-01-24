@@ -67,8 +67,6 @@ public:
   }
 
   bool add_handle(CURL* easy_handle);
-
-  // This is essentially equivalent to canceling a request.
   void remove_handle(CURL* easy_handle);
 
 private:
@@ -88,8 +86,6 @@ private:
     }
   }
 
-  // We wrap CurlSocket into a shared_ptr in order to solve sync problems with boost asio
-  // Even after cleaning up the map some callback may be pending in asio queue
   static int socket_callback(CURL* easy, curl_socket_t socket, int action, void* callback_data, void* socket_data);
   static int timer_callback(CURLM*, long timeout_in_ms, curl_multi* curl_multi);
   void       set_socket(curl_socket_t socket, CURL* easy, int action);

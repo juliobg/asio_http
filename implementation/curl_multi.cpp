@@ -15,53 +15,69 @@ namespace internal
 namespace
 {
 void socket_action(curl_multi_data& multi_data, curl_socket_t socket, int event_mask);
-void update_monitor(std::shared_ptr<curl_socket> curl_socket);
+void update_monitor_input(std::shared_ptr<curl_socket> curl_socket);
+void update_monitor_output(std::shared_ptr<curl_socket> curl_socket);
 
-void process_sockets_on_io_event(std::shared_ptr<curl_socket>     curl_socket,
-                                 int                              action,
-                                 const boost::system::error_code& error)
+void process_sockets_on_input(std::shared_ptr<curl_socket> curl_socket, const boost::system::error_code& error)
 {
   if (curl_socket->asio_stream.is_open())
   {
-    if (error == boost::asio::error::operation_aborted)
-    {
-      socket_action(*(curl_socket->curl_multi_data), curl_socket->asio_stream.native_handle(), CURL_CSELECT_ERR);
-    }
-    else
-    {
-      socket_action(*(curl_socket->curl_multi_data), curl_socket->asio_stream.native_handle(), action);
-    }
+    socket_action(*(curl_socket->curl_multi_data),
+                  curl_socket->asio_stream.native_handle(),
+                  error == boost::asio::error::operation_aborted ? CURL_CSELECT_ERR : CURL_POLL_IN);
 
-    curl_socket->pending_read  = curl_socket->pending_read && action != CURL_POLL_IN;
-    curl_socket->pending_write = curl_socket->pending_write && action != CURL_POLL_OUT;
+    curl_socket->pending_read = false;
 
-    update_monitor(std::move(curl_socket));
+    update_monitor_input(std::move(curl_socket));
   }
 }
 
-void update_monitor(std::shared_ptr<curl_socket> curl_socket)
+void process_sockets_on_output(std::shared_ptr<curl_socket> curl_socket, const boost::system::error_code& error)
 {
-  // Check whether the asio socket is still alive because the call to curl_multi_socket_action in
-  // ProcessSocketsOnIoEvent may have triggered a call to CloseSocket in the mean time
+  if (curl_socket->asio_stream.is_open())
+  {
+    socket_action(*(curl_socket->curl_multi_data),
+                  curl_socket->asio_stream.native_handle(),
+                  error == boost::asio::error::operation_aborted ? CURL_CSELECT_ERR : CURL_POLL_OUT);
+
+    curl_socket->pending_write = false;
+
+    update_monitor_output(std::move(curl_socket));
+  }
+}
+
+void update_monitor_input(std::shared_ptr<curl_socket> curl_socket)
+{
+  // Check whether the socket is still open, the call to curl_multi_socket_action in
+  // process_sockets_on_io_event may have closed it
   if (curl_socket->asio_stream.is_open() && curl_socket->curl_multi_data->strand != nullptr)
   {
     auto strand = *curl_socket->curl_multi_data->strand;
     if (curl_socket->read_monitor && !curl_socket->pending_read)
     {
-      curl_socket->asio_stream.async_wait(boost::asio::posix::stream_descriptor::wait_read,
-                                          boost::asio::bind_executor(strand, [cs = curl_socket](auto&& error) mutable {
-                                            process_sockets_on_io_event(std::move(cs), CURL_POLL_IN, error);
-                                          }));
       curl_socket->pending_read = true;
+      curl_socket->asio_stream.async_wait(
+        boost::asio::posix::stream_descriptor::wait_read,
+        boost::asio::bind_executor(strand, [cs = std::move(curl_socket)](auto&& error) mutable {
+          process_sockets_on_input(std::move(cs), error);
+        }));
     }
+  }
+}
+
+void update_monitor_output(std::shared_ptr<curl_socket> curl_socket)
+{
+  if (curl_socket->asio_stream.is_open() && curl_socket->curl_multi_data->strand != nullptr)
+  {
+    auto strand = *curl_socket->curl_multi_data->strand;
     if (curl_socket->write_monitor && !curl_socket->pending_write)
     {
-      curl_socket->asio_stream.async_wait(boost::asio::posix::stream_descriptor::wait_write,
-                                          boost::asio::bind_executor(strand, [cs = curl_socket](auto&& error) mutable {
-                                            process_sockets_on_io_event(std::move(cs), CURL_POLL_OUT, error);
-                                          }));
-
       curl_socket->pending_write = true;
+      curl_socket->asio_stream.async_wait(
+        boost::asio::posix::stream_descriptor::wait_write,
+        boost::asio::bind_executor(strand, [cs = std::move(curl_socket)](auto&& error) mutable {
+          process_sockets_on_output(std::move(cs), error);
+        }));
     }
   }
 }
@@ -165,10 +181,16 @@ void curl_multi::set_socket(curl_socket_t socket, CURL* easy, int action)
       register_socket(socket, curl_socket_ptr);
     }
 
-    curl_socket_ptr->read_monitor  = (action == CURL_POLL_IN) || (action == CURL_POLL_INOUT);
-    curl_socket_ptr->write_monitor = (action == CURL_POLL_OUT) || (action == CURL_POLL_INOUT);
-
-    update_monitor(curl_socket_ptr);
+    if ((action == CURL_POLL_IN) || (action == CURL_POLL_INOUT))
+    {
+      curl_socket_ptr->read_monitor = true;
+      update_monitor_input(curl_socket_ptr);
+    }
+    if ((action == CURL_POLL_OUT) || (action == CURL_POLL_INOUT))
+    {
+      curl_socket_ptr->write_monitor = true;
+      update_monitor_output(curl_socket_ptr);
+    }
   }
 }
 
