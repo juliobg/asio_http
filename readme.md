@@ -1,8 +1,7 @@
-=========
 asio_http
 =========
 
-This library is a http client library for Boos.Asio based on libcurl. It is not intended to wrap all functionalities in curl with a C++ interface.
+This is an http client library for Boost.Asio based on libcurl. It is not intended to wrap all functionalities in curl with a C++ interface.
 
 
 Features
