@@ -13,6 +13,11 @@ set(IMPLEMENTATION_SOURCES
   io_context_test.cpp
   url_test.cpp
 )
+
+if(NOT HAS_CORO)
+    list(REMOVE_ITEM IMPLEMENTATION_SOURCES coro_test.cpp)
+endif()
+
 set(IMPLEMENTATION_HEADERS
   http_test_base.h
 )

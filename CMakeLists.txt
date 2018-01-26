@@ -6,7 +6,16 @@
 
 project(asio_http)
 
-set(CORO_FLAGS "-fcoroutines-ts -stdlib=libc++")
+if((${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang") AND NOT(CMAKE_CXX_COMPILER_VERSION LESS 5.0))
+  set(HAS_CORO 1)
+endif()
+
+if(HAS_CORO)
+ set(CORO_FLAGS "-fcoroutines-ts -stdlib=libc++")
+else()
+ set(CORO_FLAGS "")
+endif()
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 ${CORO_FLAGS}")
 set(CMAKE_CXX_FLAGS_DEBUG "-D_DEBUG")
 
@@ -26,6 +35,11 @@ set(INTERFACE_FILES
   interface/asio_http/http_request_interface.h
   interface/asio_http/url.h
 )
+
+if(NOT HAS_CORO)
+    list(REMOVE_ITEM INTERFACE_FILES interface/asio_http/coro_handler.h)
+endif()
+
 set(IMPLEMENTATION_SOURCES
   implementation/completion_handler_invoker.cpp
   implementation/curl_easy.cpp
@@ -41,6 +55,7 @@ set(IMPLEMENTATION_SOURCES
   implementation/http_request.cpp
   implementation/url.cpp
 )
+
 set(IMPLEMENTATION_HEADERS
   implementation/interface/asio_http/internal/completion_handler_invoker.h
   implementation/interface/asio_http/internal/curl_easy.h

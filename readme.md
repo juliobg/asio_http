@@ -14,9 +14,11 @@ Features
 Requirements
 ------------
 * Boost 1.66
-* Clang 5.0 (but using other compilers may be possible if coroutines test is disabled or if they have experimental support for these)
 * libcurl 7.55.0 or later
 * zlib
+* C++14
+
+It has been tested with Clang 5.0 and macOS 10.13. It should work with any C++14 compliant compiler, except for the coroutines handler and tests, which are only enabled for Clang 5.
 
 Installation
 ------------
