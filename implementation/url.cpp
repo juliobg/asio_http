@@ -1,5 +1,5 @@
 /**
-    asio_http: wrapper for integrating libcurl with boost.asio applications
+    asio_http: http client library for boost asio
     Copyright (c) 2017 Julio Becerra Gomez
     See COPYING for license information.
 */
@@ -45,7 +45,7 @@ auto get_url_components(const std::string& url)
   }
 
   const std::string host  = what[3];
-  const std::string path  = what[6];
+  const std::string path  = what[6].str().empty() ? "/" : what[6].str();
   const std::string query = what[7];
 
   return std::make_tuple(protocol, host, port, path, query);

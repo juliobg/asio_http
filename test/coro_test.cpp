@@ -73,8 +73,6 @@ class coro_test : public http_test_base
 {
 public:
   coro_test() { m_http_client.reset(new http_client({}, m_io_context)); }
-
-  boost::asio::io_context m_io_context;
 };
 
 TEST_F(coro_test, get_request)

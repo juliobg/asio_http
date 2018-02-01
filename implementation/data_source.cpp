@@ -1,5 +1,5 @@
 /**
-    asio_http: wrapper for integrating libcurl with boost.asio applications
+    asio_http: http client library for boost asio
     Copyright (c) 2017 Julio Becerra Gomez
     See COPYING for license information.
 */
@@ -35,10 +35,9 @@ data_source::data_source(std::vector<uint8_t> data, http_request_interface::comp
 {
 }
 
-size_t data_source::read_callback(char* data, size_t size, size_t count)
+size_t data_source::read_callback(char* data, size_t size)
 {
-  const size_t size_read = size * count;
-  m_data.read(data, size_read);
+  m_data.read(data, size);
 
   return static_cast<size_t>(m_data.gcount());
 }

@@ -1,12 +1,13 @@
 #
-#    asio_http: wrapper for integrating libcurl with boost.asio applications
+#    asio_http: http client library for boost asio
 #    Copyright (c) 2017 Julio Becerra Gomez 
 #    See COPYING for license information.
 #
 
+cmake_minimum_required(VERSION 3.4)
 project(asio_http)
 
-if((${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang") AND NOT(CMAKE_CXX_COMPILER_VERSION LESS 5.0))
+if((${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang") AND NOT(CMAKE_CXX_COMPILER_VERSION LESS 7.0))
   set(HAS_CORO 1)
 endif()
 
@@ -16,13 +17,15 @@ else()
  set(CORO_FLAGS "")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 ${CORO_FLAGS}")
-set(CMAKE_CXX_FLAGS_DEBUG "-D_DEBUG")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CORO_FLAGS}")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_DEBUG")
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 INCLUDE_DIRECTORIES(/opt/local/include)
 LINK_DIRECTORIES(/opt/local/lib)
 find_package(Boost COMPONENTS thread REQUIRED)
-find_package(Curl REQUIRED)
 find_package(ZLIB REQUIRED)
 
 set(INTERFACE_FILES
@@ -42,15 +45,12 @@ endif()
 
 set(IMPLEMENTATION_SOURCES
   implementation/completion_handler_invoker.cpp
-  implementation/curl_easy.cpp
-  implementation/curl_handle_pool.cpp
-  implementation/curl_multi.cpp
+  implementation/connection_pool.cpp
   implementation/data_sink.cpp
   implementation/data_source.cpp
   implementation/http_client.cpp
   implementation/request_manager.cpp
   implementation/logging_functions.cpp
-  implementation/string_list.cpp
   implementation/compression.cpp
   implementation/http_request.cpp
   implementation/url.cpp
@@ -58,16 +58,14 @@ set(IMPLEMENTATION_SOURCES
 
 set(IMPLEMENTATION_HEADERS
   implementation/interface/asio_http/internal/completion_handler_invoker.h
-  implementation/interface/asio_http/internal/curl_easy.h
-  implementation/interface/asio_http/internal/curl_handle_pool.h
-  implementation/interface/asio_http/internal/curl_multi.h
+  implementation/interface/asio_http/internal/http_client_connection.h
+  implementation/interface/asio_http/internal/connection_pool.h
   implementation/interface/asio_http/internal/error_categories.h
   implementation/interface/asio_http/internal/data_sink.h
   implementation/interface/asio_http/internal/data_source.h
   implementation/interface/asio_http/internal/request_manager.h
   implementation/interface/asio_http/internal/logging_functions.h
   implementation/interface/asio_http/internal/request_data.h
-  implementation/interface/asio_http/internal/string_list.h
   implementation/interface/asio_http/internal/compression.h
 )
 add_library(${PROJECT_NAME} STATIC
@@ -76,13 +74,15 @@ add_library(${PROJECT_NAME} STATIC
   ${IMPLEMENTATION_HEADERS}
 )
 
+#target_compile_features(asio_http PRIVATE cxx_std_14)
+
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
     ${Boost_LIBRARIES}
   PRIVATE
     Loguru
+    http_parser
     ${ZLIB_LIBRARIES}
-    ${CURL_LIBRARIES}
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -95,3 +95,4 @@ add_subdirectory(test)
 add_subdirectory(test_server)
 add_subdirectory(loguru)
 add_subdirectory(examples)
+add_subdirectory(http_parser)

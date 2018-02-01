@@ -1,5 +1,5 @@
 /**
-    asio_http: wrapper for integrating libcurl with boost.asio applications
+    asio_http: http client library for boost asio
     Copyright (c) 2017 Julio Becerra Gomez
     See COPYING for license information.
 */
@@ -8,7 +8,6 @@
 #define ASIO_HTTP_REQUEST_DATA_H
 
 #include "asio_http/http_request_result.h"
-#include "asio_http/internal/curl_easy.h"
 
 #include <boost/asio.hpp>
 #include <chrono>
@@ -18,6 +17,8 @@ namespace asio_http
 {
 namespace internal
 {
+class http_client_connection;
+
 // It must be that Waiting < InProgress, so pending requests keep at the beginning
 // of the IndexState index
 enum class request_state
@@ -40,16 +41,17 @@ struct request_data
       , m_completion_executor(std::move(executor))
       , m_cancellation_token(std::move(cancellation_token))
       , m_creation_time(std::chrono::steady_clock::now())
+      , m_retries(0)
   {
   }
   request_state                                 m_request_state;
-  std::shared_ptr<curl_easy>                    m_curl_easy;
+  std::shared_ptr<http_client_connection>       m_connection;
   std::shared_ptr<const http_request_interface> m_http_request;
   completion_handler                            m_completion_handler;
   boost::asio::executor                         m_completion_executor;
   std::string                                   m_cancellation_token;
   std::chrono::steady_clock::time_point         m_creation_time;
-  CURL* get_curl_easy_handle() const { return m_curl_easy ? m_curl_easy->get_handle() : nullptr; }
+  uint32_t                                      m_retries;
 };
 }
 }

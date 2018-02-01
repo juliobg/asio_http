@@ -1,5 +1,5 @@
 /**
-    asio_http: wrapper for integrating libcurl with boost.asio applications
+    asio_http: http client library for boost asio
     Copyright (c) 2017 Julio Becerra Gomez
     See COPYING for license information.
 */
@@ -26,8 +26,6 @@ class io_context_test : public http_test_base
 {
 public:
   io_context_test() { m_http_client.reset(new http_client({}, m_io_context)); }
-
-  boost::asio::io_context m_io_context;
 };
 
 TEST_F(io_context_test, get_request)

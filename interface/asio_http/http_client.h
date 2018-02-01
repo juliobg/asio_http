@@ -1,5 +1,5 @@
 /**
-    asio_http: wrapper for integrating libcurl with boost.asio applications
+    asio_http: http client library for boost asio
     Copyright (c) 2017 Julio Becerra Gomez
     See COPYING for license information.
 */
@@ -8,6 +8,7 @@
 #define ASIO_HTTP_HTTP_CLIENT_H
 
 #include "asio_http/http_client_settings.h"
+#include "asio_http/internal/request_data.h"
 #include "asio_http/internal/request_manager.h"
 #include <asio_http/http_request.h>
 

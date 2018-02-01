@@ -1,5 +1,5 @@
 /**
-    asio_http: wrapper for integrating libcurl with boost.asio applications
+    asio_http: http client library for boost asio
     Copyright (c) 2017 Julio Becerra Gomez
     See COPYING for license information.
 */
@@ -23,7 +23,7 @@ public:
   data_source(const data_source&) = delete;
   data_source(std::vector<uint8_t> data, http_request_interface::compression_policy policy);
 
-  size_t read_callback(char* data, size_t size, size_t count);
+  size_t read_callback(char* data, size_t size);
 
   // this is needed if the peer is using a 3XX redirect
   bool seek_callback(int32_t offset, std::ios_base::seekdir origin);

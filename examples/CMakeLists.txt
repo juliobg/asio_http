@@ -1,5 +1,5 @@
 #
-#    asio_http: wrapper for integrating libcurl with boost.asio applications
+#    asio_http: http client library for boost asio
 #    Copyright (c) 2017 Julio Becerra Gomez
 #    See COPYING for license information.
 #

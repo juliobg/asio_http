@@ -1,5 +1,5 @@
 /**
-    asio_http: wrapper for integrating libcurl with boost.asio applications
+    asio_http: http client library for boost asio
     Copyright (c) 2017 Julio Becerra Gomez
     See COPYING for license information.
 */
@@ -18,10 +18,6 @@ class http_request_result;
 
 // Path to the file holding the private key, the client
 // certificate and CA bundle, respectively
-//
-// https://curl.haxx.se/libcurl/c/CURLOPT_SSLKEY.html
-// https://curl.haxx.se/libcurl/c/CURLOPT_SSLCERT.html
-// https://curl.haxx.se/libcurl/c/CURLOPT_CAINFO.html
 struct ssl_settings
 {
   ssl_settings(std::string client_private_key_file_,

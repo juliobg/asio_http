@@ -1,20 +1,18 @@
 asio_http
 =========
 
-This is an http client library for Boost.Asio based on libcurl. It is not intended to wrap all functionalities in curl with a C++ interface.
+This is an http client library for Boost.Asio
 
 
 Features
 --------
 * **simple interface** - Download and upload anything, synchronously or asynchronously, with just a few lines.
 * **connection pool** - It is possible to configure the maximum number of parallel asynchronous requests. Pending request are enqueued.
-* **DNS cache** - As provided by libcurl
 * **completion handler flexibility** - Any type of callables along futures or C++20 (experimental) awaitables are supported.
 
 Requirements
 ------------
 * Boost 1.66
-* libcurl 7.55.0 or later
 * zlib
 * C++14
 

@@ -1,5 +1,5 @@
 /**
-    asio_http: wrapper for integrating libcurl with boost.asio applications
+    asio_http: http client library for boost asio
     Copyright (c) 2017 Julio Becerra Gomez
     See COPYING for license information.
 */
@@ -10,17 +10,16 @@
 #include <asio_http/http_request_result.h>
 
 #include <chrono>
-#include <curl/curl.h>
 
 namespace asio_http
 {
 class http_request_result;
 namespace internal
 {
-class curl_easy;
-int                curl_debug_logging(CURL* unused, curl_infotype info_type, char* data, size_t size, void* url);
+class http_client_connection;
 void               http_request_stats_logging(const http_request_result& result);
-http_request_stats get_request_stats(curl_easy* ceasy, std::chrono::steady_clock::time_point creation_time);
+http_request_stats get_request_stats(http_client_connection*               connection,
+                                     std::chrono::steady_clock::time_point creation_time);
 }
 }
 #endif

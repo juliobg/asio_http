@@ -1,5 +1,5 @@
 /**
-    asio_http: wrapper for integrating libcurl with boost.asio applications
+    asio_http: http client library for boost asio
     Copyright (c) 2017 Julio Becerra Gomez
     See COPYING for license information.
 */
@@ -8,7 +8,7 @@
 
 #include "asio_http/http_request.h"
 #include "asio_http/http_request_result.h"
-#include "asio_http/internal/curl_easy.h"
+#include "asio_http/internal/http_client_connection.h"
 
 #define LOGURU_IMPLEMENTATION 1
 #include "loguru.hpp"
@@ -16,7 +16,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cinttypes>
-#include <curl/curl.h>
 #include <iomanip>
 #include <iostream>
 #include <string>
@@ -54,60 +53,13 @@ void log_data(const std::string& url, const char* msg, size_t size, const std::s
 }
 #endif
 }
-#ifdef _DEBUG
-int curl_debug_logging(CURL* unused, curl_infotype info_type, char* data, size_t size, void* url)
-{
-  const char* url_string = static_cast<const char*>(url);
-  std::string data_string(data, size);  // data is not guaranteed to be 0-terminated
-  data_string.erase(data_string.find_last_not_of("\n") + 1);
 
-  switch (info_type)
-  {
-    case CURLINFO_HEADER_IN:
-      LOG_F(INFO, "(%s) Received header (%zu) %s", url, size, data_string.c_str());
-      break;
-    case CURLINFO_HEADER_OUT:
-      LOG_F(INFO, "(%s) Sending header (%zu) %s", url, size, data_string.c_str());
-      break;
-    case CURLINFO_DATA_IN:
-      log_data(url_string, "Received data", size, data_string);
-      break;
-    case CURLINFO_DATA_OUT:
-      log_data(url_string, "Sending data", size, data_string);
-      break;
-    case CURLINFO_SSL_DATA_IN:
-      log_data(url_string, "Received SSL data", size, data_string);
-      break;
-    case CURLINFO_SSL_DATA_OUT:
-      log_data(url_string, "Sending SSL data", size, data_string);
-      break;
-    case CURLINFO_END:
-      break;
-    case CURLINFO_TEXT:
-      LOG_F(INFO, "(%s) Info: %s", url, data_string.c_str());
-      break;
-  }
-
-  return 0;
-}
-#endif
-
-http_request_stats get_request_stats(curl_easy* ceasy, std::chrono::steady_clock::time_point creation_time)
+http_request_stats get_request_stats(http_client_connection*               connection,
+                                     std::chrono::steady_clock::time_point creation_time)
 {
   http_request_stats stats_ret = {};
 
   stats_ret.total_time_s = std::chrono::steady_clock::now() - creation_time;
-
-  if (ceasy != nullptr)
-  {
-    CURL* handle                     = ceasy->get_handle();
-    stats_ret.uploaded_bytes         = ceasy->get_curl_easy_info<curl_off_t>(CURLINFO_CONTENT_LENGTH_UPLOAD_T);
-    stats_ret.downloaded_bytes       = ceasy->get_curl_easy_info<curl_off_t>(CURLINFO_CONTENT_LENGTH_DOWNLOAD_T);
-    stats_ret.avg_upload_speed_bps   = ceasy->get_curl_easy_info<curl_off_t>(CURLINFO_SPEED_UPLOAD_T);
-    stats_ret.avg_download_speed_bps = ceasy->get_curl_easy_info<curl_off_t>(CURLINFO_SPEED_DOWNLOAD_T);
-    stats_ret.name_lookup_time_s =
-      std::chrono::duration<double>(ceasy->get_curl_easy_info<double>(CURLINFO_NAMELOOKUP_TIME));
-  }
 
   return stats_ret;
 }

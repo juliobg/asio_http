@@ -1,5 +1,5 @@
 /**
-    asio_http: wrapper for integrating libcurl with boost.asio applications
+    asio_http: http client library for boost asio
     Copyright (c) 2017 Julio Becerra Gomez
     See COPYING for license information.
 */
@@ -27,7 +27,7 @@ namespace
 const std::string HOST                              = "http://127.0.0.1:10123";
 const std::string GET_RESOURCE                      = "/anything";
 const std::string GET_RESPONSE                      = "This is the response";
-const std::size_t GET_RESOURCE_HEADER_SIZE_EXPECTED = 96;
+const std::size_t GET_RESOURCE_HEADER_SIZE_EXPECTED = 81;
 const std::string TIMEOUT_RESOURCE                  = "/timeout";
 const std::string ECHO_RESOURCE                     = "/echo";
 const std::string POST_RESOURCE                     = "/post";
@@ -129,6 +129,7 @@ protected:
     m_server_thread.join();
   }
 
+  boost::asio::io_context      m_io_context;
   std::unique_ptr<http_client> m_http_client;
 
   post_data_queue m_post_data_queue;

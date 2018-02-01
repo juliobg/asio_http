@@ -1,5 +1,5 @@
 /**
-    asio_http: wrapper for integrating libcurl with boost.asio applications
+    asio_http: http client library for boost asio
     Copyright (c) 2017 Julio Becerra Gomez
     See COPYING for license information.
 */
@@ -8,8 +8,7 @@
 #define ASIO_HTTP_REQUEST_MANAGER_H
 
 #include "asio_http/http_client_settings.h"
-#include "asio_http/internal/curl_handle_pool.h"
-#include "asio_http/internal/curl_multi.h"
+#include "asio_http/internal/connection_pool.h"
 #include "asio_http/internal/request_data.h"
 
 #include <boost/asio.hpp>
@@ -20,8 +19,8 @@
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/thread.hpp>
-#include <curl/curl.h>
 #include <memory>
+#include <system_error>
 
 namespace asio_http
 {
@@ -41,7 +40,7 @@ public:
   void                             cancel_requests(const std::string& cancellation_token);
 
 private:
-  struct index_curl
+  struct index_connection
   {
   };
   struct index_request
@@ -54,7 +53,7 @@ private:
   {
   };
 
-  using RequestList = boost::multi_index::multi_index_container<
+  using request_list = boost::multi_index::multi_index_container<
     request_data,
     boost::multi_index::indexed_by<
       boost::multi_index::ordered_non_unique<
@@ -65,8 +64,8 @@ private:
           boost::multi_index::
             member<request_data, std::chrono::steady_clock::time_point, &request_data::m_creation_time>>>,
       boost::multi_index::ordered_non_unique<
-        boost::multi_index::tag<index_curl>,
-        boost::multi_index::const_mem_fun<request_data, CURL*, &request_data::get_curl_easy_handle>>,
+        boost::multi_index::tag<index_connection>,
+        boost::multi_index::member<request_data, std::shared_ptr<http_client_connection>, &request_data::m_connection>>,
       boost::multi_index::ordered_non_unique<boost::multi_index::tag<index_request>,
                                              boost::multi_index::member<request_data,
                                                                         std::shared_ptr<const http_request_interface>,
@@ -76,17 +75,16 @@ private:
         boost::multi_index::member<request_data, std::string, &request_data::m_cancellation_token>>>>;
 
   void execute_waiting_requests();
-  void on_curl_request_completed(CURL* handle, uint32_t curl_code);
+  void on_request_completed(std::shared_ptr<http_client_connection> handle, boost::system::error_code ec);
   template<typename Iterator, typename Index>
-  void handle_completed_request(Index& index, const Iterator& iterator, uint32_t curl_code);
-  void create_request_result(const request_data& request, uint32_t curl_code);
-  void release_curl_easy_handle(const request_data& request, uint32_t curl_code);
+  void handle_completed_request(Index& index, const Iterator& iterator, std::error_code ec);
+  void create_request_result(const request_data& request, std::error_code ec);
+  void release_http_client_connection_handle(const request_data& request, std::error_code ec);
 
   const http_client_settings      m_settings;
   boost::asio::io_context::strand m_strand;
-  curl_multi                      m_curl_multi;
-  curl_handle_pool                m_curl_handle_pool;
-  RequestList                     m_requests;
+  connection_pool                 m_connection_pool;
+  request_list                    m_requests;
 };
 }
 }
