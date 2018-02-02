@@ -15,7 +15,7 @@ namespace test
 {
 namespace
 {
-const std::string              URL          = "http://someaddress.com";
+const std::string              URL          = "http://someaddress.com/";
 const uint32_t                 TIMEOUT_MSEC = 30 * 1000;
 const std::string              CLIENT_PRIVATE_KEY_FILE("ClientPrivateKeyFile");
 const std::string              CERTIFICATE_AUTHORITY_BUNDLE_FILE("CertificateAuthorityBundleFile");

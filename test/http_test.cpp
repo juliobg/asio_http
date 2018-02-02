@@ -27,7 +27,7 @@ class http_test : public http_test_base
 {
 };
 
-/*TEST_F(http_test, get_request)
+TEST_F(http_test, get_request)
 {
   http_request_result reply = m_http_client->get(use_std_future, get_url(GET_RESOURCE), HTTP_CANCELLATION_TOKEN).get();
 
@@ -150,7 +150,7 @@ TEST_F(http_test, handle_pool)
   {
     EXPECT_EQ(futures[i].wait_for(std::chrono::seconds(0)), std::future_status::timeout);
   }
-}*/
+}
 
 TEST_F(http_test, parallel_get_requests)
 {

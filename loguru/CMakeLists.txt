@@ -4,7 +4,7 @@
 #    See COPYING for license information.
 #
 
-project(Loguru)
+project(loguru)
 
 #set(INTERFACE_FILES
 #  loguru.hpp

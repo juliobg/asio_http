@@ -80,7 +80,7 @@ target_link_libraries(${PROJECT_NAME}
   PUBLIC
     ${Boost_LIBRARIES}
   PRIVATE
-    Loguru
+    loguru
     http_parser
     ${ZLIB_LIBRARIES}
 )

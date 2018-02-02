@@ -16,7 +16,6 @@
 #include "http_parser.h"
 
 #include <boost/asio.hpp>
-#include <iostream>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -80,8 +79,6 @@ struct request_buffers
     request_headers << http_method_to_string(m_request->get_http_method()) << " " << m_request->get_url().path
                     << " HTTP/1.1\r\n";
 
-    std::cout << http_method_to_string(m_request->get_http_method()) << " " << m_request->get_url().path
-              << " HTTP/1.1\r\n";
     request_headers << "Host: " << m_request->get_url().host << "\r\n";
     for (const auto& header : m_request->get_http_headers())
     {
@@ -324,14 +321,16 @@ inline void http_client_connection::read_handler(const boost::system::error_code
     const char* data = boost::asio::buffer_cast<const char*>(response_buffer_.data());
 
     std::size_t nsize = http_parser_execute(&parser_, &settings_, data, bytes_transferred);
-
     if (nsize != bytes_transferred)
     {
       complete_request(HTTP_PARSER_ERRNO(&parser_));
       return;
     }
     response_buffer_.consume(nsize);
-    start_read();
+    if (m_current_request->m_state != connection_state::done)
+    {
+      start_read();
+    }
   }
   else
   {
