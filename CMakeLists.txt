@@ -91,6 +91,7 @@ target_include_directories(${PROJECT_NAME}
     interface
 )
 
+enable_testing()
 add_subdirectory(test)
 add_subdirectory(test_server)
 add_subdirectory(loguru)
