@@ -8,6 +8,7 @@
 #define ASIO_HTTP_DATA_SINK_H
 
 #include <sstream>
+#include <vector>
 
 namespace asio_http
 {
