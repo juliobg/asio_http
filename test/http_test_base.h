@@ -108,7 +108,7 @@ class http_test_base : public ::testing::Test
 {
 protected:
   http_test_base()
-      : m_http_client(new http_client({ HTTP_CLIENT_POOL_SIZE }))
+      : m_http_client(new http_client(http_client_settings{ HTTP_CLIENT_POOL_SIZE }))
       , m_web_server(m_server_io_context,
                      "127.0.0.1",
                      10123,

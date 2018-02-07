@@ -10,6 +10,7 @@
 #include "asio_http/http_request_interface.h"
 #include "asio_http/url.h"
 
+#include <memory>
 #include <vector>
 
 namespace asio_http
