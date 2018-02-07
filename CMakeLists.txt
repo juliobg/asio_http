@@ -27,6 +27,7 @@ INCLUDE_DIRECTORIES(/opt/local/include)
 LINK_DIRECTORIES(/opt/local/lib)
 find_package(Boost COMPONENTS thread REQUIRED)
 find_package(ZLIB REQUIRED)
+find_package(Threads)
 
 set(INTERFACE_FILES
   interface/asio_http/coro_handler.h
@@ -84,6 +85,7 @@ target_link_libraries(${PROJECT_NAME}
     http_parser
     ${ZLIB_LIBRARIES}
     ${CMAKE_DL_LIBS} # For loguru dladdr
+    ${CMAKE_THREAD_LIBS_INIT}
 )
 
 target_include_directories(${PROJECT_NAME}
