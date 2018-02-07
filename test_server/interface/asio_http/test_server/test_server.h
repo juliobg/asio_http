@@ -491,7 +491,8 @@ public:
 private:
   void start_accept()
   {
-    m_acceptor.async_accept([this](auto error_code, auto socket) { handle_accept(error_code, std::move(socket)); });
+    m_acceptor.async_accept(
+      [this](auto error_code, auto socket) { this->handle_accept(error_code, std::move(socket)); });
   }
   void handle_accept(const boost::system::error_code& error_code, boost::asio::ip::tcp::socket socket)
   {
