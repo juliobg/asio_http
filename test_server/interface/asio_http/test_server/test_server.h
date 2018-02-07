@@ -235,9 +235,9 @@ public:
   std::string get_request_resource()
   {
     std::string value;
-    char*       tmp1 = strnstr(m_request_buffer.data(), "/", m_request_buffer.size());
-    char*       tmp2 = strnstr(tmp1, "?", m_request_buffer.size() - (&(*m_request_buffer.begin()) - tmp1));
-    char*       tmp3 = strnstr(tmp1, " HTTP", m_request_buffer.size() - (&(*m_request_buffer.begin()) - tmp1));
+    char*       tmp1 = mystrnstr(m_request_buffer.data(), "/", m_request_buffer.size());
+    char*       tmp2 = mystrnstr(tmp1, "?", m_request_buffer.size() - (&(*m_request_buffer.begin()) - tmp1));
+    char*       tmp3 = mystrnstr(tmp1, " HTTP", m_request_buffer.size() - (&(*m_request_buffer.begin()) - tmp1));
 
     if (tmp1 == nullptr || tmp3 == nullptr)
     {
@@ -269,7 +269,7 @@ public:
 
   std::vector<char> get_post_data()
   {
-    char* begin = strnstr(m_request_buffer.data(), "\r\n\r\n", m_request_buffer.size());
+    char* begin = mystrnstr(m_request_buffer.data(), "\r\n\r\n", m_request_buffer.size());
     return std::vector<char>(begin + 4, &(*(--m_request_buffer.end())) + 1);
   }
 
@@ -378,7 +378,7 @@ public:
 
     std::size_t wheaderSize;
 
-    char* tmp = strnstr(m_response_buffer.data(), "\r\n\r\n", m_response_buffer.size());
+    char* tmp = mystrnstr(m_response_buffer.data(), "\r\n\r\n", m_response_buffer.size());
     if (tmp != nullptr)
     {
       wheaderSize = tmp - &(*m_response_buffer.begin()) + 4;
