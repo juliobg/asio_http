@@ -116,7 +116,7 @@ void request_manager::on_request_completed(std::shared_ptr<http_client_connectio
         request.m_connection = new_handle;
         request.m_retries++;
       });
-      new_handle->start(request, [this](auto&& handle, auto&& ec) { on_request_completed(handle, ec); });
+      new_handle->start(request, [this](auto&& handle, auto&& ec) { this->on_request_completed(handle, ec); });
     }
     else
     {
@@ -141,7 +141,7 @@ void request_manager::execute_waiting_requests()
       request.m_connection    = handle;
       request.m_request_state = request_state::in_progress;
     });
-    handle->start(request, [this](auto&& handle, auto&& ec) { on_request_completed(handle, ec); });
+    handle->start(request, [this](auto&& handle, auto&& ec) { this->on_request_completed(handle, ec); });
   }
 }
 }
