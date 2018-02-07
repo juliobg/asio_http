@@ -83,6 +83,7 @@ target_link_libraries(${PROJECT_NAME}
     loguru
     http_parser
     ${ZLIB_LIBRARIES}
+    ${CMAKE_DL_LIBS} # For loguru dladdr
 )
 
 target_include_directories(${PROJECT_NAME}
