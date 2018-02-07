@@ -23,7 +23,6 @@ set(IMPLEMENTATION_HEADERS
 )
 
 find_package(Boost COMPONENTS filesystem system REQUIRED)
-find_package(GTest REQUIRED)
 
 include_directories(${GTEST_INCLUDE_DIRS})
 add_executable(${PROJECT_NAME} ${IMPLEMENTATION_SOURCES} ${IMPLEMENTATION_HEADERS})
@@ -35,7 +34,8 @@ target_link_libraries(${PROJECT_NAME}
     asio_http.TestServer
     http_parser
     ${Boost_LIBRARIES}
-    ${GTEST_BOTH_LIBRARIES}
+    gtest
+    gtest_main
 )
 
 
