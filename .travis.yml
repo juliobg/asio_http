@@ -45,6 +45,7 @@ install:
     - sudo ./bootstrap.sh --prefix=/usr/local --with-libraries=thread,filesystem,system
     - sudo ./b2 -d0
     - sudo ./b2 install -d0
+    - cd ..
 
     # Download and install recent cmake
     - |
