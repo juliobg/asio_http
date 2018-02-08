@@ -47,3 +47,19 @@ int main(int argc, char* argv[])
   context.run();
 }
 ```
+
+POST request example
+--------------------
+
+Similarly to the previous example, the code below would send a POST HTTP request.
+
+```c++
+const std::string          str       = "some data to post";
+const std::vector<uint8_t> post_data = { str.begin(), str.end() };
+client.post([](asio_http::http_request_result result) { std::cout << result.get_body_as_string(); },
+            "http://httpbin.org/post",
+            post_data,
+            "text/plain");
+context.run();
+```
+
