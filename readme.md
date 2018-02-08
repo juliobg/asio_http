@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/juliobg/asio_http.svg?branch=master)](https://travis-ci.org/juliobg/asio_http)
+
 asio_http
 =========
 
