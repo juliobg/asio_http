@@ -68,6 +68,7 @@ set(IMPLEMENTATION_HEADERS
   implementation/interface/asio_http/internal/logging_functions.h
   implementation/interface/asio_http/internal/request_data.h
   implementation/interface/asio_http/internal/compression.h
+  implementation/interface/asio_http/internal/socket.h
 )
 add_library(${PROJECT_NAME} STATIC
   ${INTERFACE_FILES}

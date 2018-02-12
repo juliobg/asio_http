@@ -41,8 +41,7 @@ void connection_pool::release_connection(std::shared_ptr<http_client_connection>
   }
   else if (handle->is_open())
   {
-    // m_connection_pool[host].push(handle);
-    handle->socket_.close();
+    m_connection_pool[host].push(handle);
   }
 }
 }

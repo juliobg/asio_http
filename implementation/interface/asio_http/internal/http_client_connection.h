@@ -12,6 +12,7 @@
 #include <asio_http/internal/data_sink.h>
 #include <asio_http/internal/data_source.h>
 #include <asio_http/internal/error_categories.h>
+#include <asio_http/internal/socket.h>
 
 #include "http_parser.h"
 
@@ -30,6 +31,7 @@ namespace internal
 enum class connection_state
 {
   in_progress,
+  writing_body,
   done
 };
 
@@ -49,16 +51,13 @@ struct request_buffers
 {
   request_buffers(std::shared_ptr<const http_request_interface> request)
       : m_request(request)
-      , m_body_buffer(1024)
       , m_data_source(request->get_post_data(), request->get_compress_post_data_policy())
       , m_state(connection_state::in_progress)
   {
   }
-  boost::asio::streambuf                        request_buffer_;
   std::shared_ptr<const http_request_interface> m_request;
   std::vector<std::string>                      m_headers;
   std::pair<std::string, std::string>           m_current_header;
-  std::vector<uint8_t>                          m_body_buffer;
   data_sink                                     m_data_sink;
   data_source                                   m_data_source;
   connection_state                              m_state;
@@ -73,9 +72,9 @@ struct request_buffers
     m_current_header.second.clear();
   }
 
-  void print_request_headers()
+  std::vector<uint8_t> print_request_headers()
   {
-    std::ostream request_headers(&request_buffer_);
+    std::stringstream request_headers;
     request_headers << http_method_to_string(m_request->get_http_method()) << " " << m_request->get_url().path
                     << " HTTP/1.1\r\n";
 
@@ -89,50 +88,56 @@ struct request_buffers
       request_headers << "Content-Length: " << m_data_source.get_size() << "\r\n";
     }
     request_headers << "\r\n";
+
+    const std::string headers = request_headers.str();
+
+    return std::vector<uint8_t>(headers.begin(), headers.end());
   }
 };
 
-struct http_client_connection : std::enable_shared_from_this<http_client_connection>
+struct http_client_connection
+    : transport_layer
+    , std::enable_shared_from_this<http_client_connection>
 {
-  typedef std::shared_ptr<http_client_connection> pointer;
   http_client_connection(boost::asio::io_context::strand& strand, std::pair<std::string, uint16_t> host);
-  ~http_client_connection() {}
-  void       start(std::shared_ptr<const http_request_interface>                                           request,
-                   std::function<void(std::shared_ptr<http_client_connection>, boost::system::error_code)> callback);
-  void       resolve_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
-  void       connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
-  void       start_read();
-  void       write_handler(const boost::system::error_code& error, std::size_t bytes_transferred);
-  void       write_body_handler(const boost::system::error_code& error, std::size_t bytes_transferred);
-  void       read_handler(const boost::system::error_code& error, std::size_t bytes_transferred);
-  static int on_header_field(http_parser* parser, const char* at, size_t length);
-  static int on_header_value(http_parser* parser, const char* at, size_t length);
-  static int on_body(http_parser* parser, const char* at, size_t length);
-  static int on_message_complete(http_parser* parser);
-  static int on_headers_complete(http_parser* parser);
-  static int on_status(http_parser* parser, const char* at, size_t length);
-  void       write_body();
-  void       send_headers();
+  ~http_client_connection() { m_socket->set_upper(nullptr); }
+  void         start(std::shared_ptr<const http_request_interface>                                           request,
+                     std::function<void(std::shared_ptr<http_client_connection>, boost::system::error_code)> callback);
+  void         resolve_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
+  virtual void on_connected(const boost::system::error_code& ec) override;
+  virtual void on_write(const boost::system::error_code& ec) override;
+  virtual void on_read(const uint8_t* data, std::size_t size, boost::system::error_code ec) override;
+  void         start_read();
+  void         write_handler(const boost::system::error_code& error, std::size_t bytes_transferred);
+  void         write_body_handler(const boost::system::error_code& error, std::size_t bytes_transferred);
+  void         read_handler(const boost::system::error_code& error, std::size_t bytes_transferred);
+  static int   on_header_field(http_parser* parser, const char* at, size_t length);
+  static int   on_header_value(http_parser* parser, const char* at, size_t length);
+  static int   on_body(http_parser* parser, const char* at, size_t length);
+  static int   on_message_complete(http_parser* parser);
+  static int   on_headers_complete(http_parser* parser);
+  static int   on_status(http_parser* parser, const char* at, size_t length);
+  void         write_body();
+  void         send_headers();
   boost::asio::io_context::strand& m_strand;
   boost::asio::io_context&         io_service_;
   boost::asio::ip::tcp::resolver   resolver_;
-  boost::asio::ip::tcp::socket     socket_;
 
-  boost::asio::streambuf                                                                  response_buffer_;
-  http_parser_settings                                                                    settings_;
-  http_parser                                                                             parser_;
+  http_parser_settings                                                                    m_settings;
+  http_parser                                                                             m_parser;
   std::function<void(std::shared_ptr<http_client_connection>, boost::system::error_code)> m_completed_request_callback;
   std::pair<std::string, uint16_t>                                                        m_host_port;
 
   std::unique_ptr<request_buffers> m_current_request;
+  std::shared_ptr<transport_layer> m_socket;
 
   boost::asio::deadline_timer m_timer;
 
   std::string  status_;
   unsigned int get_response_code() const
   {
-    assert(parser_.type == HTTP_RESPONSE);
-    return parser_.status_code;
+    assert(m_parser.type == HTTP_RESPONSE);
+    return m_parser.status_code;
   }
 
   std::pair<std::string, uint16_t> get_host_and_port() const { return m_host_port; }
@@ -146,15 +151,15 @@ struct http_client_connection : std::enable_shared_from_this<http_client_connect
 
   void cancel()
   {
-    socket_.close();
+    m_socket->close();
     complete_request(boost::asio::error::operation_aborted);
   }
 
   void complete_request(boost::system::error_code ec, bool close = false)
   {
-    if ((ec || close) && socket_.is_open())
+    if (ec || close)
     {
-      socket_.close();
+      m_socket->close();
     }
     if (m_current_request->m_state != connection_state::done)
     {
@@ -164,28 +169,29 @@ struct http_client_connection : std::enable_shared_from_this<http_client_connect
     }
   }
 
-  bool is_open() { return socket_.is_open(); }
+  bool is_open() { return m_socket->is_open(); }
 };
 
 inline http_client_connection::http_client_connection(boost::asio::io_context::strand& strand,
                                                       std::pair<std::string, uint16_t> host)
-    : m_strand(strand)
+    : transport_layer(nullptr)
+    , m_strand(strand)
     , io_service_(strand.context())
     , resolver_(io_service_)
-    , socket_(io_service_)
-    , settings_()
-    , parser_()
+    , m_settings()
+    , m_parser()
     , m_host_port(host)
+    , m_socket(new tcp_socket(this, strand.context()))
     , m_timer(io_service_)
 {
-  http_parser_init(&parser_, HTTP_RESPONSE);
-  parser_.data                  = this;
-  settings_.on_body             = &http_client_connection::on_body;
-  settings_.on_message_complete = &http_client_connection::on_message_complete;
-  settings_.on_status           = &http_client_connection::on_status;
-  settings_.on_header_field     = &http_client_connection::on_header_field;
-  settings_.on_header_value     = &http_client_connection::on_header_value;
-  settings_.on_headers_complete = &http_client_connection::on_headers_complete;
+  http_parser_init(&m_parser, HTTP_RESPONSE);
+  m_parser.data                  = this;
+  m_settings.on_body             = &http_client_connection::on_body;
+  m_settings.on_message_complete = &http_client_connection::on_message_complete;
+  m_settings.on_status           = &http_client_connection::on_status;
+  m_settings.on_header_field     = &http_client_connection::on_header_field;
+  m_settings.on_header_value     = &http_client_connection::on_header_value;
+  m_settings.on_headers_complete = &http_client_connection::on_headers_complete;
 }
 
 inline void http_client_connection::start(
@@ -200,11 +206,11 @@ inline void http_client_connection::start(
     if (!ec)
     {
       ptr->complete_request(boost::asio::error::timed_out);
-      ptr->socket_.close();
+      ptr->m_socket->close();
     }
   });
 
-  if (socket_.is_open())
+  if (m_socket->is_open())
   {
     send_headers();
   }
@@ -225,116 +231,72 @@ inline void http_client_connection::resolve_handler(const boost::system::error_c
     return;
   }
 
-  boost::asio::ip::tcp::endpoint ep = *i;
-  socket_.async_connect(ep, [ ptr = shared_from_this(), i ](auto&& ec) { ptr->connect_handler(ec, i); });
+  m_socket->connect(i);
 }
 
 inline void http_client_connection::send_headers()
 {
-  m_current_request->print_request_headers();
-
-  boost::asio::async_write(
-    socket_, m_current_request->request_buffer_, [ptr = shared_from_this()](auto&& ec, auto&& bytes) {
-      ptr->write_handler(ec, bytes);
-    });
+  m_socket->write(m_current_request->print_request_headers());
 }
 
-inline void http_client_connection::connect_handler(const boost::system::error_code&         ec,
-                                                    boost::asio::ip::tcp::resolver::iterator i)
+inline void http_client_connection::on_connected(const boost::system::error_code& ec)
 {
   if (!ec)
   {
     send_headers();
   }
-  // Retry to connect if error
-  else if (i != boost::asio::ip::tcp::resolver::iterator())
-  {
-    boost::asio::ip::tcp::endpoint ep = *i;
-    socket_.async_connect(ep, [ ptr = shared_from_this(), i ](auto&& ec) { ptr->connect_handler(ec, i); });
-  }
   else
   {
     complete_request(ec);
   }
 }
 
-inline void http_client_connection::start_read()
-{
-  socket_.async_read_some(response_buffer_.prepare(1024), [ptr = shared_from_this()](auto&& ec, auto&& bytes) {
-    ptr->read_handler(ec, bytes);
-  });
-}
-
-inline void http_client_connection::write_handler(const boost::system::error_code& ec, std::size_t bytes_transferred)
+inline void http_client_connection::on_write(const boost::system::error_code& ec)
 {
   if (ec)
   {
     complete_request(ec);
-    return;
   }
-  m_current_request->request_buffer_.consume(bytes_transferred);
-  if (m_current_request->m_data_source.get_size() == 0)
+  else if (m_current_request->m_data_source.get_size() == 0)
   {
-    start_read();
+    m_socket->read();
   }
   else
   {
-    write_body();
-  }
-}
-
-inline void http_client_connection::write_body()
-{
-  auto count = m_current_request->m_data_source.read_callback(
-    reinterpret_cast<char*>(m_current_request->m_body_buffer.data()), m_current_request->m_body_buffer.size());
-
-  if (count != 0)
-  {
-    boost::asio::async_write(
-      socket_,
-      boost::asio::const_buffer(m_current_request->m_body_buffer.data(), count),
-      [ptr = shared_from_this()](auto&& ec, auto&& bytes) { ptr->write_body_handler(ec, bytes); });
-  }
-  else
-  {
-    start_read();
-  }
-}
-
-inline void http_client_connection::write_body_handler(const boost::system::error_code& error,
-                                                       std::size_t                      bytes_transferred)
-{
-  if (!error && bytes_transferred)
-  {
-    write_body();
-  }
-  else
-  {
-    complete_request(error);
-  }
-}
-
-inline void http_client_connection::read_handler(const boost::system::error_code& error, std::size_t bytes_transferred)
-{
-  if ((!error && bytes_transferred) || error == boost::asio::error::eof)
-  {
-    const char* data = boost::asio::buffer_cast<const char*>(response_buffer_.data());
-
-    std::size_t nsize = http_parser_execute(&parser_, &settings_, data, bytes_transferred);
-    if (nsize != bytes_transferred)
+    std::vector<uint8_t> buf(1024);
+    auto count = m_current_request->m_data_source.read_callback(reinterpret_cast<char*>(buf.data()), buf.size());
+    if (count != 0)
     {
-      complete_request(HTTP_PARSER_ERRNO(&parser_));
+      buf.resize(count);
+      m_socket->write(buf);
+    }
+    else
+    {
+      m_socket->read();
+    }
+  }
+}
+
+inline void http_client_connection::on_read(const uint8_t* data, std::size_t size, boost::system::error_code ec)
+{
+  if (!ec || ec == boost::asio::error::eof)
+  {
+    const char* d = reinterpret_cast<const char*>(data);
+
+    std::size_t nsize = http_parser_execute(&m_parser, &m_settings, d, size);
+    if (nsize != size)
+    {
+      complete_request(HTTP_PARSER_ERRNO(&m_parser));
       return;
     }
-    response_buffer_.consume(nsize);
     if (m_current_request->m_state != connection_state::done)
     {
-      start_read();
+      m_socket->read();
     }
   }
   else
   {
-    complete_request(error);
+    complete_request(ec);
   }
 }
 
