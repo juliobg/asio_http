@@ -7,11 +7,11 @@
 #ifndef ASIO_HTTP_CLIENT_CONNECTION_H
 #define ASIO_HTTP_CLIENT_CONNECTION_H
 
+#include <asio_http/error.h>
 #include <asio_http/http_request_interface.h>
 #include <asio_http/http_request_result.h>
 #include <asio_http/internal/data_sink.h>
 #include <asio_http/internal/data_source.h>
-#include <asio_http/internal/error_categories.h>
 #include <asio_http/internal/socket.h>
 
 #include "http_parser.h"

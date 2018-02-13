@@ -10,6 +10,7 @@
 #include "asio_http/http_request_result.h"
 
 #include <boost/asio.hpp>
+#include <future>
 #include <memory>
 
 namespace asio_http

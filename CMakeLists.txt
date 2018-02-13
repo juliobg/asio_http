@@ -7,7 +7,7 @@
 cmake_minimum_required(VERSION 3.4)
 project(asio_http)
 
-if((${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang") AND NOT(CMAKE_CXX_COMPILER_VERSION LESS 7.0))
+if((${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang") AND NOT(CMAKE_CXX_COMPILER_VERSION LESS 5.0))
   set(HAS_CORO 1)
 endif()
 
@@ -25,13 +25,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 INCLUDE_DIRECTORIES(/opt/local/include)
 LINK_DIRECTORIES(/opt/local/lib)
-find_package(Boost COMPONENTS thread REQUIRED)
+find_package(Boost COMPONENTS system REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Threads)
 
 set(INTERFACE_FILES
   interface/asio_http/coro_handler.h
+  interface/asio_http/error.h
   interface/asio_http/future_handler.h
   interface/asio_http/http_request.h
   interface/asio_http/http_request_result.h
@@ -62,7 +63,6 @@ set(IMPLEMENTATION_HEADERS
   implementation/interface/asio_http/internal/completion_handler_invoker.h
   implementation/interface/asio_http/internal/http_client_connection.h
   implementation/interface/asio_http/internal/connection_pool.h
-  implementation/interface/asio_http/internal/error_categories.h
   implementation/interface/asio_http/internal/data_sink.h
   implementation/interface/asio_http/internal/data_source.h
   implementation/interface/asio_http/internal/request_manager.h
@@ -82,9 +82,9 @@ add_library(${PROJECT_NAME} STATIC
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
     ${Boost_LIBRARIES}
+    http_parser # public for errors enum
   PRIVATE
     loguru
-    http_parser
     ${ZLIB_LIBRARIES}
     ${CMAKE_DL_LIBS} # For loguru dladdr
     ${CMAKE_THREAD_LIBS_INIT}

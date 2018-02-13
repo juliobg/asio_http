@@ -22,8 +22,6 @@ set(IMPLEMENTATION_HEADERS
   http_test_base.h
 )
 
-find_package(Boost COMPONENTS filesystem system REQUIRED)
-
 include_directories(${GTEST_INCLUDE_DIRS})
 add_executable(${PROJECT_NAME} ${IMPLEMENTATION_SOURCES} ${IMPLEMENTATION_HEADERS})
 add_test(${PROJECT_NAME} ${PROJECT_NAME})
@@ -32,8 +30,6 @@ target_link_libraries(${PROJECT_NAME}
   PRIVATE
     asio_http
     asio_http.TestServer
-    http_parser
-    ${Boost_LIBRARIES}
     gtest
     gtest_main
 )

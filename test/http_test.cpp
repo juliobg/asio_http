@@ -6,10 +6,10 @@
 
 #include "http_test_base.h"
 
+#include "asio_http/error.h"
 #include "asio_http/future_handler.h"
 #include "asio_http/http_request.h"
 #include "asio_http/http_request_interface.h"
-#include "asio_http/internal/error_categories.h"
 
 #include <gtest/gtest.h>
 #include <memory>

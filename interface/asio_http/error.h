@@ -61,7 +61,6 @@ public:
     {
       return std::error_code(error.value(), get_singleton_system());
     }
-    // assert(false);
     return std::error_code(error.value(), get_singleton_generic());
   }
 
@@ -101,8 +100,7 @@ inline std::error_code make_error_code(boost::asio::error::basic_errors e)
 {
   return std::error_code(static_cast<int>(e), asio_http::internal::asio_mapped_error::get_singleton_system());
 }
-
-}  // namespace std
+}
 
 namespace boost
 {

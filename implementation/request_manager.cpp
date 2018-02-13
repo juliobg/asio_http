@@ -6,10 +6,10 @@
 
 #include "asio_http/internal/request_manager.h"
 
+#include "asio_http/error.h"
 #include "asio_http/http_request_interface.h"
 #include "asio_http/http_request_result.h"
 #include "asio_http/internal/completion_handler_invoker.h"
-#include "asio_http/internal/error_categories.h"
 #include "asio_http/internal/http_client_connection.h"
 #include "asio_http/internal/logging_functions.h"
 
