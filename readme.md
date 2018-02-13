@@ -11,12 +11,14 @@ Features
 * **simple interface** - Download and upload anything, synchronously or asynchronously, with just a few lines.
 * **connection pool** - It is possible to configure the maximum number of parallel asynchronous requests. Pending request are enqueued.
 * **completion handler flexibility** - Any type of callables along futures or C++20 (experimental) awaitables are supported.
+* **SSL support**
 
 Requirements
 ------------
 * Boost 1.66
 * zlib
 * C++14
+* OpenSSL
 
 It has been tested with Clang 5.0 and macOS 10.13. It should work with any C++14 compliant compiler, except for the coroutines handler and tests, which are only enabled for Clang 5.
 
@@ -46,6 +48,13 @@ int main(int argc, char* argv[])
 
   context.run();
 }
+```
+
+Not that HTTPS is supported:
+
+```c++
+client.get([](asio_http::http_request_result result) { std::cout << result.get_body_as_string(); }, "https://duckduckgo.com");
+
 ```
 
 POST request example

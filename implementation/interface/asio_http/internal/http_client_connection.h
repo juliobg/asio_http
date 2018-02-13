@@ -201,6 +201,11 @@ inline void http_client_connection::start(
   m_current_request.reset(new request_buffers(request));
   m_completed_request_callback = callback;
 
+  if (request->get_url().protocol == "https")
+  {
+    m_socket = std::shared_ptr<transport_layer>(new ssl_socket(this, m_strand.context(), request->get_url().host));
+  }
+
   m_timer.expires_from_now(boost::posix_time::millisec(request->get_timeout_msec()));
   m_timer.async_wait([ptr = shared_from_this()](auto&& ec) {
     if (!ec)

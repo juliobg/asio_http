@@ -26,6 +26,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 INCLUDE_DIRECTORIES(/opt/local/include)
 LINK_DIRECTORIES(/opt/local/lib)
 find_package(Boost COMPONENTS thread REQUIRED)
+find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Threads)
 
@@ -87,6 +88,7 @@ target_link_libraries(${PROJECT_NAME}
     ${ZLIB_LIBRARIES}
     ${CMAKE_DL_LIBS} # For loguru dladdr
     ${CMAKE_THREAD_LIBS_INIT}
+    OpenSSL::SSL
 )
 
 target_include_directories(${PROJECT_NAME}
