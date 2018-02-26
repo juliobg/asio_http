@@ -20,11 +20,23 @@ Requirements
 * C++14
 * OpenSSL
 
-It has been tested with Clang 5.0 and macOS 10.13. It should work with any C++14 compliant compiler, except for the coroutines handler and tests, which are only enabled for Clang 5.
+It should work with any C++14 compliant compiler, except for the coroutines handler and tests, which are only enabled for Clang 5.
 
 Installation
 ------------
 It is a cmake based project. Just copy the asio_http folder into your (also cmake based) project, and add asio_http as a target link library dependency.
+
+In any case, if you want to compile and run the tests and examples, just follow the typical cmake procedure:
+
+```
+cd asio_http
+mkdir build
+cd build
+cmake .. -DBUILD_ASIO_HTTP_TESTS=ON
+make
+```
+
+Note we need to set the `BUILD_ASIO_HTTP_TESTS` option in order to build the tests, otherwise only the library is built.
 
 GET request example
 -------------------
@@ -50,7 +62,7 @@ int main(int argc, char* argv[])
 }
 ```
 
-Not that HTTPS is supported:
+Note that HTTPS is supported:
 
 ```c++
 client.get([](asio_http::http_request_result result) { std::cout << result.get_body_as_string(); }, "https://duckduckgo.com");
@@ -72,3 +84,24 @@ client.post([](asio_http::http_request_result result) { std::cout << result.get_
 context.run();
 ```
 
+Asynchronous
+------------
+An asynchronous function returns before it is finished, and generally causes some work to happen in the background before triggering some future action in the application (as opposed to normal synchronous functions, which do everything they are going to do before returning).
+
+Currently three asynchronous interfaces have been tested:
+* Callback argument
+* Future placeholder
+* Awaitable placeholder (C++20 coroutines)
+
+For the callback argument see the examples above. Any type of callable is supported (e.g. std::function or C++11 lambda).
+
+In the case of `std::future` placeholder, the special value `asio_http::use_std_future` (arternatively `boost::asio::use_future`) must be used to specify that an asynchronous operation should return a future.
+
+```c++
+#include "asio_http/future_handler.h"
+
+auto future = client.get(asio_http::use_std_future, "www.google.com");
+auto body = future.get().get_body_as_string();
+```
+
+See `coro_test.cpp` for an example on how to use the special value `asio_http::use_coro`, which indicates that the asynchronous operation should return a C++20 awaitable.

@@ -7,6 +7,8 @@
 cmake_minimum_required(VERSION 3.4)
 project(asio_http)
 
+option(BUILD_ASIO_HTTP_TESTS "build tests and examples")
+
 if((${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang") AND NOT(CMAKE_CXX_COMPILER_VERSION LESS 5.0))
   set(HAS_CORO 1)
 endif()
@@ -97,7 +99,6 @@ target_include_directories(${PROJECT_NAME}
     interface
 )
 
-
 # Download and unpack googletest at configure time
 configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
 execute_process(COMMAND "${CMAKE_COMMAND}" -G "${CMAKE_GENERATOR}" .
@@ -115,11 +116,11 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 add_subdirectory("${CMAKE_BINARY_DIR}/googletest-src"
                  "${CMAKE_BINARY_DIR}/googletest-build")
 
-########
-
 enable_testing()
-add_subdirectory(test)
-add_subdirectory(test_server)
+if(BUILD_ASIO_HTTP_TESTS)
+  add_subdirectory(test)
+  add_subdirectory(test_server)
+  add_subdirectory(examples)
+endif()
 add_subdirectory(loguru)
-add_subdirectory(examples)
 add_subdirectory(http_parser)

@@ -4,6 +4,7 @@
 #    See COPYING for license information.
 #
 
+cmake_minimum_required(VERSION 3.4)
 project(asio_http.test)
 
 set(IMPLEMENTATION_SOURCES
