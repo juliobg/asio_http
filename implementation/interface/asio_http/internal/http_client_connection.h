@@ -120,8 +120,8 @@ struct http_client_connection
   void         write_body();
   void         send_headers();
   boost::asio::io_context::strand& m_strand;
-  boost::asio::io_context&         io_service_;
-  boost::asio::ip::tcp::resolver   resolver_;
+  boost::asio::io_context&         m_context;
+  boost::asio::ip::tcp::resolver   m_resolver;
 
   http_parser_settings                                                                    m_settings;
   http_parser                                                                             m_parser;
@@ -133,7 +133,6 @@ struct http_client_connection
 
   boost::asio::deadline_timer m_timer;
 
-  std::string  status_;
   unsigned int get_response_code() const
   {
     assert(m_parser.type == HTTP_RESPONSE);
@@ -169,20 +168,20 @@ struct http_client_connection
     }
   }
 
-  bool is_open() { return m_socket->is_open(); }
+  bool is_valid_connection() { return m_socket->is_open(); }
 };
 
 inline http_client_connection::http_client_connection(boost::asio::io_context::strand& strand,
                                                       std::pair<std::string, uint16_t> host)
     : transport_layer(nullptr)
     , m_strand(strand)
-    , io_service_(strand.context())
-    , resolver_(io_service_)
+    , m_context(strand.context())
+    , m_resolver(m_context)
     , m_settings()
     , m_parser()
     , m_host_port(host)
     , m_socket(new tcp_socket(this, strand.context()))
-    , m_timer(io_service_)
+    , m_timer(m_context)
 {
   http_parser_init(&m_parser, HTTP_RESPONSE);
   m_parser.data                  = this;
@@ -223,7 +222,7 @@ inline void http_client_connection::start(
   {
     boost::asio::ip::tcp::resolver::query q(request->get_url().host, std::to_string(request->get_url().port));
 
-    resolver_.async_resolve(q, [ptr = shared_from_this()](auto&& ec, auto&& it) { ptr->resolve_handler(ec, it); });
+    m_resolver.async_resolve(q, [ptr = shared_from_this()](auto&& ec, auto&& it) { ptr->resolve_handler(ec, it); });
   }
 }
 
@@ -336,8 +335,6 @@ inline int http_client_connection::on_headers_complete(http_parser* parser)
 
 inline int http_client_connection::on_status(http_parser* parser, const char* at, size_t length)
 {
-  http_client_connection* obj = static_cast<http_client_connection*>(parser->data);
-  obj->status_.append(at, length);
   return 0;
 }
 

@@ -39,7 +39,7 @@ void connection_pool::release_connection(std::shared_ptr<http_client_connection>
     auto new_stack = std::stack<std::shared_ptr<http_client_connection>>();
     m_connection_pool[host].swap(new_stack);
   }
-  else if (handle->is_open())
+  else if (handle->is_valid_connection())
   {
     m_connection_pool[host].push(handle);
   }
