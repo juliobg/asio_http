@@ -34,9 +34,10 @@ request_manager::request_manager(const http_client_settings& settings, boost::as
 
 request_manager::~request_manager()
 {
+  auto& index = m_requests.get<index_connection>();
   while (m_requests.size() != 0)
   {
-    m_requests.get<index_connection>().begin()->m_connection->cancel();
+    cancel_request(index, m_requests.get<index_connection>().begin());
   }
 }
 
@@ -56,8 +57,21 @@ void request_manager::cancel_requests(const std::string& cancellation_token)
     request_list::index_iterator<index_cancellation>::type it;
     while ((it = index.find(cancellation_token)) != index.end())
     {
-      it->m_connection->cancel();
+      cancel_request(index, it);
     }
+  }
+}
+
+template<typename Iterator, typename Index>
+void request_manager::cancel_request(Index& index, const Iterator& it)
+{
+  if (it->m_connection)
+  {
+    it->m_connection->cancel();
+  }
+  else
+  {
+    handle_completed_request(index, it, boost::asio::error::operation_aborted);
   }
 }
 
@@ -97,10 +111,6 @@ void request_manager::create_request_result(const request_data& request, std::er
 
 void request_manager::on_request_completed(std::shared_ptr<http_client_connection> handle, boost::system::error_code ec)
 {
-  if (ec)
-  {
-    int i = 2;
-  }
   auto& index = m_requests.get<index_connection>();
   auto  it    = index.find(handle);
   if (it != m_requests.get<index_connection>().end())

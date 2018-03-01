@@ -78,6 +78,8 @@ private:
   void on_request_completed(std::shared_ptr<http_client_connection> handle, boost::system::error_code ec);
   template<typename Iterator, typename Index>
   void handle_completed_request(Index& index, const Iterator& iterator, std::error_code ec);
+  template<typename Iterator, typename Index>
+  void cancel_request(Index& index, const Iterator& it);
   void create_request_result(const request_data& request, std::error_code ec);
   void release_http_client_connection_handle(const request_data& request, std::error_code ec);
 

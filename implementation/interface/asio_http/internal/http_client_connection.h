@@ -103,7 +103,6 @@ struct http_client_connection
   ~http_client_connection() { m_socket->set_upper(nullptr); }
   void         start(std::shared_ptr<const http_request_interface>                                           request,
                      std::function<void(std::shared_ptr<http_client_connection>, boost::system::error_code)> callback);
-  void         resolve_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator i);
   virtual void on_connected(const boost::system::error_code& ec) override;
   virtual void on_write(const boost::system::error_code& ec) override;
   virtual void on_read(const uint8_t* data, std::size_t size, boost::system::error_code ec) override;
@@ -120,8 +119,6 @@ struct http_client_connection
   void         write_body();
   void         send_headers();
   boost::asio::io_context::strand& m_strand;
-  boost::asio::io_context&         m_context;
-  boost::asio::ip::tcp::resolver   m_resolver;
 
   http_parser_settings                                                                    m_settings;
   http_parser                                                                             m_parser;
@@ -150,7 +147,6 @@ struct http_client_connection
 
   void cancel()
   {
-    m_socket->close();
     complete_request(boost::asio::error::operation_aborted);
   }
 
@@ -175,13 +171,10 @@ inline http_client_connection::http_client_connection(boost::asio::io_context::s
                                                       std::pair<std::string, uint16_t> host)
     : transport_layer(nullptr)
     , m_strand(strand)
-    , m_context(strand.context())
-    , m_resolver(m_context)
     , m_settings()
     , m_parser()
     , m_host_port(host)
-    , m_socket(new tcp_socket(this, strand.context()))
-    , m_timer(m_context)
+    , m_timer(strand.context())
 {
   http_parser_init(&m_parser, HTTP_RESPONSE);
   m_parser.data                  = this;
@@ -200,42 +193,27 @@ inline void http_client_connection::start(
   m_current_request.reset(new request_buffers(request));
   m_completed_request_callback = callback;
 
-  if (request->get_url().protocol == "https")
-  {
-    m_socket = std::shared_ptr<transport_layer>(new ssl_socket(this, m_strand.context(), request->get_url().host));
-  }
-
   m_timer.expires_from_now(boost::posix_time::millisec(request->get_timeout_msec()));
   m_timer.async_wait([ptr = shared_from_this()](auto&& ec) {
     if (!ec)
     {
       ptr->complete_request(boost::asio::error::timed_out);
-      ptr->m_socket->close();
     }
   });
 
-  if (m_socket->is_open())
+  // Reuse open connection or allocate new transport layer
+  if (m_socket && m_socket->is_open())
   {
     send_headers();
   }
+  else if (request->get_url().protocol == "https")
+  {
+    m_socket = ssl_socket::connect(this, m_strand.context(), request->get_url().host, std::to_string(request->get_url().port));
+  }
   else
   {
-    boost::asio::ip::tcp::resolver::query q(request->get_url().host, std::to_string(request->get_url().port));
-
-    m_resolver.async_resolve(q, [ptr = shared_from_this()](auto&& ec, auto&& it) { ptr->resolve_handler(ec, it); });
+    m_socket = tcp_socket::connect(this, m_strand.context(), request->get_url().host, std::to_string(request->get_url().port));
   }
-}
-
-inline void http_client_connection::resolve_handler(const boost::system::error_code&         ec,
-                                                    boost::asio::ip::tcp::resolver::iterator i)
-{
-  if (ec)
-  {
-    complete_request(ec);
-    return;
-  }
-
-  m_socket->connect(i);
 }
 
 inline void http_client_connection::send_headers()

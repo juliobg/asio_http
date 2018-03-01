@@ -25,7 +25,6 @@ public:
   {
   }
   virtual ~transport_layer() {}
-  virtual void connect(boost::asio::ip::tcp::resolver::iterator it) {}
   virtual void on_connected(const boost::system::error_code& ec) {}
   virtual void read() {}
   virtual void on_read(const uint8_t* data, std::size_t size, boost::system::error_code ec) {}
@@ -66,21 +65,14 @@ class generic_stream
     , public std::enable_shared_from_this<generic_stream<Socket>>
 {
 public:
-  generic_stream(transport_layer* upper, boost::asio::io_context& context)
-      : transport_layer(upper)
-      , m_read_buffer(1024)
-      , m_socket(context)
+  static std::shared_ptr<transport_layer> connect(transport_layer* upper, boost::asio::io_context& context, const std::string& host, const std::string& port)
   {
+    auto socket = std::shared_ptr<generic_stream<Socket>>(new generic_stream<Socket>(upper, context));
+    socket->connect(host, port);
+    return socket;
   }
 
   virtual bool is_open() override { return m_socket.is_open(); }
-
-  virtual void connect(boost::asio::ip::tcp::resolver::iterator it) override
-  {
-    boost::asio::ip::tcp::endpoint ep = *it;
-
-    m_socket.async_connect(ep, [ ptr = this->shared_from_this(), it ](auto&& ec) { ptr->connect_handler(ec, it); });
-  }
 
   virtual void write(std::vector<uint8_t> data) override
   {
@@ -105,6 +97,37 @@ private:
   Socket               m_socket;
   std::vector<uint8_t> m_write_buffer;
   std::vector<uint8_t> m_read_buffer;
+  boost::asio::ip::tcp::resolver  m_resolver;
+
+  generic_stream(transport_layer* upper, boost::asio::io_context& context)
+      : transport_layer(upper)
+      , m_read_buffer(1024)
+      , m_socket(context)
+      , m_resolver(context)
+  {
+  }
+
+  void connect(const std::string& host, const std::string& port)
+  {
+    boost::asio::ip::tcp::resolver::query q(host, port);
+
+    m_resolver.async_resolve(q, [ptr = this->shared_from_this()](auto&& ec, auto&& it) { ptr->resolve_handler(ec, it); });
+  }
+
+  void resolve_handler(const boost::system::error_code&         ec,
+                       boost::asio::ip::tcp::resolver::iterator it)
+  {
+    if (ec)
+    {
+      call_on_connected(ec);
+      return;
+    }
+    boost::asio::ip::tcp::endpoint ep = *it;
+
+    m_socket.async_connect(
+      ep, [ ptr = this->shared_from_this(), it ](auto&& ec) { ptr->connect_handler(ec, it); });
+
+  }
 
   void connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator it)
   {
@@ -138,26 +161,14 @@ class ssl_socket
     , public std::enable_shared_from_this<ssl_socket>
 {
 public:
-  ssl_socket(transport_layer* upper, boost::asio::io_context& context, const std::string& host_name)
-      : transport_layer(upper)
-      , m_read_buffer(1024)
-      , m_context(boost::asio::ssl::context::sslv23)
-      , m_socket(context, m_context)
+  static std::shared_ptr<transport_layer> connect(transport_layer* upper, boost::asio::io_context& context, const std::string& host, const std::string& port)
   {
-    m_context.set_default_verify_paths();
-    m_socket.set_verify_mode(boost::asio::ssl::verify_peer);
-    m_socket.set_verify_callback(boost::asio::ssl::rfc2818_verification(host_name));
+    auto socket = std::shared_ptr<ssl_socket>(new ssl_socket(upper, context, host));
+    socket->connect(host, port);
+    return socket;
   }
 
   virtual bool is_open() override { return m_socket.lowest_layer().is_open(); }
-
-  virtual void connect(boost::asio::ip::tcp::resolver::iterator it) override
-  {
-    boost::asio::ip::tcp::endpoint ep = *it;
-
-    m_socket.lowest_layer().async_connect(
-      ep, [ ptr = this->shared_from_this(), it ](auto&& ec) { ptr->connect_handler(ec, it); });
-  }
 
   virtual void write(std::vector<uint8_t> data) override
   {
@@ -183,6 +194,41 @@ private:
   boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket;
   std::vector<uint8_t>                                   m_write_buffer;
   std::vector<uint8_t>                                   m_read_buffer;
+  boost::asio::ip::tcp::resolver  m_resolver;
+
+  ssl_socket(transport_layer* upper, boost::asio::io_context& context, const std::string& host)
+      : transport_layer(upper)
+      , m_read_buffer(1024)
+      , m_context(boost::asio::ssl::context::sslv23)
+      , m_socket(context, m_context)
+      , m_resolver(context)
+  {
+    m_context.set_default_verify_paths();
+    m_socket.set_verify_mode(boost::asio::ssl::verify_peer);
+    m_socket.set_verify_callback(boost::asio::ssl::rfc2818_verification(host));
+  }
+
+  void connect(const std::string& host, const std::string& port)
+  {
+    boost::asio::ip::tcp::resolver::query q(host, port);
+
+    m_resolver.async_resolve(q, [ptr = shared_from_this()](auto&& ec, auto&& it) { ptr->resolve_handler(ec, it); });
+  }
+
+  void resolve_handler(const boost::system::error_code&         ec,
+                       boost::asio::ip::tcp::resolver::iterator it)
+  {
+    if (ec)
+    {
+      call_on_connected(ec);
+      return;
+    }
+    boost::asio::ip::tcp::endpoint ep = *it;
+
+    m_socket.lowest_layer().async_connect(
+      ep, [ ptr = this->shared_from_this(), it ](auto&& ec) { ptr->connect_handler(ec, it); });
+
+  }
 
   void connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator it)
   {
