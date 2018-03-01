@@ -35,9 +35,12 @@ request_manager::request_manager(const http_client_settings& settings, boost::as
 request_manager::~request_manager()
 {
   auto& index = m_requests.get<index_connection>();
-  while (m_requests.size() != 0)
+  for (auto it = index.begin(); it != index.end(); ++it)
   {
-    cancel_request(index, m_requests.get<index_connection>().begin());
+    if (m_requests.get<index_connection>().begin()->m_connection)
+    {
+      m_requests.get<index_connection>().begin()->m_connection->cancel(true);
+    }
   }
 }
 
@@ -80,7 +83,7 @@ void request_manager::handle_completed_request(Index& index, const Iterator& ite
 {
   create_request_result(*iterator, ec);
   index.erase(iterator);
-  execute_waiting_requests();
+  m_strand.post([ ptr = this->shared_from_this()]() { ptr->execute_waiting_requests(); });
 }
 
 void request_manager::release_http_client_connection_handle(const request_data& request, std::error_code ec)

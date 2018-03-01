@@ -145,12 +145,12 @@ struct http_client_connection
 
   std::vector<std::string> get_reply_headers() const { return m_current_request->m_headers; }
 
-  void cancel()
+  void cancel(bool silent = false)
   {
-    complete_request(boost::asio::error::operation_aborted);
+    complete_request(boost::asio::error::operation_aborted, true, silent);
   }
 
-  void complete_request(boost::system::error_code ec, bool close = false)
+  void complete_request(boost::system::error_code ec, bool close = false, bool silent = false)
   {
     if (ec || close)
     {
@@ -160,7 +160,10 @@ struct http_client_connection
     {
       m_current_request->m_state = connection_state::done;
       m_timer.cancel();
-      m_completed_request_callback(shared_from_this(), ec);
+      if (!silent)
+      {
+        m_completed_request_callback(shared_from_this(), ec);
+      }
     }
   }
 

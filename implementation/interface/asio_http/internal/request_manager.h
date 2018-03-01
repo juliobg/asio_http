@@ -30,7 +30,7 @@ namespace internal
 {
 class request_data;
 
-class request_manager
+class request_manager : public std::enable_shared_from_this<request_manager>
 {
 public:
   request_manager(const http_client_settings& settings, boost::asio::io_context& io_context);
