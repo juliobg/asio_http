@@ -7,6 +7,8 @@
 #ifndef ASIO_HTTP_SOCKET_H
 #define ASIO_HTTP_SOCKET_H
 
+#include "asio_http/http_request_interface.h"
+
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include <memory>
@@ -161,9 +163,9 @@ class ssl_socket
     , public std::enable_shared_from_this<ssl_socket>
 {
 public:
-  static std::shared_ptr<transport_layer> connect(transport_layer* upper, boost::asio::io_context& context, const std::string& host, const std::string& port)
+  static std::shared_ptr<transport_layer> connect(transport_layer* upper, boost::asio::io_context& context, const std::string& host, const std::string& port, const ssl_settings& ssl)
   {
-    auto socket = std::shared_ptr<ssl_socket>(new ssl_socket(upper, context, host));
+    auto socket = std::shared_ptr<ssl_socket>(new ssl_socket(upper, context, host, ssl));
     socket->connect(host, port);
     return socket;
   }
@@ -196,7 +198,7 @@ private:
   std::vector<uint8_t>                                   m_read_buffer;
   boost::asio::ip::tcp::resolver  m_resolver;
 
-  ssl_socket(transport_layer* upper, boost::asio::io_context& context, const std::string& host)
+  ssl_socket(transport_layer* upper, boost::asio::io_context& context, const std::string& host, const ssl_settings& ssl)
       : transport_layer(upper)
       , m_read_buffer(1024)
       , m_context(boost::asio::ssl::context::sslv23)
@@ -204,6 +206,18 @@ private:
       , m_resolver(context)
   {
     m_context.set_default_verify_paths();
+    if (!ssl.client_certificate_file.empty())
+    {
+      m_context.use_certificate_file(ssl.client_certificate_file, boost::asio::ssl::context_base::pem);
+    }
+    if (!ssl.client_private_key_file.empty())
+    {
+      m_context.use_private_key_file(ssl.client_private_key_file, boost::asio::ssl::context_base::pem);
+    }
+    if (!ssl.certificate_authority_bundle_file.empty())
+    {
+      m_context.use_certificate_chain_file(ssl.certificate_authority_bundle_file);
+    }
     m_socket.set_verify_mode(boost::asio::ssl::verify_peer);
     m_socket.set_verify_callback(boost::asio::ssl::rfc2818_verification(host));
   }

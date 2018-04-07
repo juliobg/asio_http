@@ -211,7 +211,7 @@ inline void http_client_connection::start(
   }
   else if (request->get_url().protocol == "https")
   {
-    m_socket = ssl_socket::connect(this, m_strand.context(), request->get_url().host, std::to_string(request->get_url().port));
+    m_socket = ssl_socket::connect(this, m_strand.context(), request->get_url().host, std::to_string(request->get_url().port), request->get_ssl_settings());
   }
   else
   {
