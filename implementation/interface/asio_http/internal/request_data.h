@@ -19,8 +19,8 @@ namespace internal
 {
 class http_client_connection;
 
-// It must be that Waiting < InProgress, so pending requests keep at the beginning
-// of the IndexState index
+// It must be that waiting < in_progress, so pending requests keep at the beginning
+// of the index_state index
 enum class request_state
 {
   waiting     = 0,  // Waiting in the requests queue

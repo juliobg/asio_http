@@ -3,7 +3,7 @@
 asio_http
 =========
 
-This is an http client library for Boost.Asio
+This is an http client library for Boost.Asio. It is intended to be simple and easy-to-use for the asynchronous consumption of REST APIs.
 
 
 Features
@@ -105,3 +105,25 @@ auto body = future.get().get_body_as_string();
 ```
 
 See `coro_test.cpp` for an example on how to use the special value `asio_http::use_coro`, which indicates that the asynchronous operation should return a C++20 awaitable.
+
+Seetings
+--------
+
+Right now the only available setting is the maximum size of the connection pool (i.e., maximum number of parallel requests). It may be configured as below when creating an instane of the http client:
+
+
+```c++
+boost::asio::io_context context;
+
+asio_http::http_client  client(http_client_settings{ 1 }, context);
+```
+
+which would mean than only one active reqeuest is allowed, and the others would be enqueued, and reuse the open connection when it is possible.
+
+When no value is given, pool size of 25 is used by default:
+
+```c++
+boost::asio::io_context context;
+
+asio_http::http_client  client({}, context);
+```
