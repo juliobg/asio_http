@@ -60,22 +60,11 @@ char* mystrnstr(const char* haystack, const char* needle, size_t len)
   return nullptr;
 }
 
-const char server[]        = "HTTP Server";
-const char url_too_large[] = "Content-type: text/html\r\n\r\n<HTML><title>URL too large</title><body "
-                             "bgcolor=FFFFFF><font size=6>414 URL too "
-                             "large</font><BR><BR><HR><small><i>%s</i></small></body></html>\n\r";
-const char invalid_request[] = "Content-type: text/html\r\n\r\n<HTML><title>Invalid request</title><body "
-                               "bgcolor=FFFFFF><font size=6>400 Invalid  request</font><BR><BR><small>Invalid "
-                               "request...</small><BR><HR><small><i>%s</i></small></body></html>\n\r";
-const char forbidden[] = "Content-type: text/html\r\n\r\n<HTML><title>Forbidden</title><body bgcolor=FFFFFF><font "
-                         "size=6>403 Forbidden</font><BR><small>Solo se aceptan conexiones "
-                         "locales</small><BR><HR><small><i>%s</i></small></body></html>\n\r";
+const char server[]    = "HTTP Server";
 const char not_found[] = "Content-type: text/html\r\n\r\n<HTML><title>not found</title><body bgcolor=FFFFFF><font "
                          "size=6>404 Not found...</font><BR><BR><HR><small><i>%s</i></small></body></html>\n\r";
 const char range_msg[] = "Content-type: text/html\r\n\r\n<HTML><title>Requested Range Not Satisfiable</title><body "
-                         "bgcolor=FFFFFF><font size=6>416 Requested Range Not Satisfiable</font><BR><BR><small>Se "
-                         " "
-                         "pide...</small><BR><HR><small><i>%s</i></small></body></html>\n\r";
+                         "bgcolor=FFFFFF><font size=6>416 Requested Range Not Satisfiable</font><BR><BR></body></html>\n\r";
 }
 
 namespace asio_http
