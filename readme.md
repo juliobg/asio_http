@@ -127,3 +127,25 @@ boost::asio::io_context context;
 
 asio_http::http_client  client({}, context);
 ```
+
+Request result
+--------------
+
+These are the data members of the `http_request_result` struct:
+
+```c++
+std::shared_ptr<const http_request_interface> request;
+uint32_t                                      http_response_code;
+std::vector<std::string>                      headers;
+std::vector<uint8_t>                          content_body;
+std::error_code                               error;
+http_request_stats                            stats;
+```
+
+They include:
+* A shared pointer to the original request
+* The HTTP response code
+* All the headers as returned by the server
+* The body of the response
+* Error code in case the parsing failed or there was some network problem
+* Statistics regarding this requests (not yet implemented)
