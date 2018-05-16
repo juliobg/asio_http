@@ -106,7 +106,7 @@ auto body = future.get().get_body_as_string();
 
 See `coro_test.cpp` for an example on how to use the special value `asio_http::use_coro`, which indicates that the asynchronous operation should return a C++20 awaitable.
 
-Seetings
+Settings
 --------
 
 Right now the only available setting is the maximum size of the connection pool (i.e., maximum number of parallel requests). It may be configured as below when creating an instane of the http client:
