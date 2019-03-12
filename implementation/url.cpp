@@ -13,6 +13,8 @@ namespace asio_http
 {
 namespace
 {
+using std::uint16_t;
+
 const uint16_t DEFAULT_PORT_HTTP  = 80;
 const uint16_t DEFAULT_PORT_HTTPS = 443;
 
@@ -50,7 +52,7 @@ auto get_url_components(const std::string& url)
 
   return std::make_tuple(protocol, host, port, path, query);
 }
-}
+}  // namespace
 
 url::url(const std::tuple<std::string, std::string, uint16_t, std::string, std::string>& tuple)
     : protocol(std::get<0>(tuple))
@@ -90,4 +92,4 @@ bool operator!=(const url& url1, const url& url2)
 {
   return !(url1 == url2);
 }
-}
+}  // namespace asio_http

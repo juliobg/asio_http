@@ -51,8 +51,8 @@ struct request_data
   boost::asio::executor                         m_completion_executor;
   std::string                                   m_cancellation_token;
   std::chrono::steady_clock::time_point         m_creation_time;
-  uint32_t                                      m_retries;
+  std::uint32_t                                 m_retries;
 };
-}
-}
+}  // namespace internal
+}  // namespace asio_http
 #endif

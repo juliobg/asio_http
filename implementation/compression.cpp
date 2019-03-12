@@ -23,6 +23,7 @@ namespace asio_http
 {
 namespace internal
 {
+using std::uint8_t;
 std::vector<uint8_t> compress(const std::vector<uint8_t>& data, int compression_level)
 {
   z_stream             z_str{};
@@ -108,7 +109,10 @@ std::vector<uint8_t> decompress_gzip(const std::vector<uint8_t>& data)
 
     if (ret != Z_STREAM_END)
     {
-      LOG_F(ERROR, "decompress_gzip: error while attempting gzip decompression: %d", ret);
+      LOG_F(ERROR,
+            "decompress_gzip: error while attempting gzip "
+            "decompression: %d",
+            ret);
     }
   }
 
@@ -142,5 +146,5 @@ std::vector<uint8_t> decompress_deflate(const std::vector<uint8_t>& data)
   }
   return result;
 }
-}
-}
+}  // namespace internal
+}  // namespace asio_http

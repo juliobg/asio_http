@@ -41,7 +41,7 @@ public:
       cancellation_token);
 
     m_request_manager->get_strand().post(
-      [ ptr = m_request_manager, request = std::move(new_request) ]() { ptr->execute_request(request); });
+      [ptr = m_request_manager, request = std::move(new_request)]() { ptr->execute_request(request); });
 
     return init.result.get();
   }
@@ -55,7 +55,7 @@ public:
                                                         http_request::DEFAULT_TIMEOUT_MSEC,
                                                         ssl_settings(),
                                                         std::vector<std::string>(),
-                                                        std::vector<uint8_t>(),
+                                                        std::vector<std::uint8_t>(),
                                                         http_request_interface::compression_policy::never);
 
     return execute_request(std::forward<CompletionToken>(completion_token), request, cancellation_token);
@@ -68,11 +68,11 @@ public:
   }
 
   template<typename CompletionToken>
-  auto post(CompletionToken&&    completion_token,
-            const std::string&   url_string,
-            std::vector<uint8_t> data,
-            const std::string&   content_type,
-            const std::string&   cancellation_token)
+  auto post(CompletionToken&&         completion_token,
+            const std::string&        url_string,
+            std::vector<std::uint8_t> data,
+            const std::string&        content_type,
+            const std::string&        cancellation_token)
   {
     const auto request = std::make_shared<http_request>(http_request_interface::http_method::POST,
                                                         url(url_string),
@@ -87,10 +87,10 @@ public:
   }
 
   template<typename CompletionToken>
-  auto post(CompletionToken&&    completion_token,
-            const std::string&   url_string,
-            std::vector<uint8_t> data,
-            const std::string&   content_type)
+  auto post(CompletionToken&&         completion_token,
+            const std::string&        url_string,
+            std::vector<std::uint8_t> data,
+            const std::string&        content_type)
   {
     return post(std::forward<CompletionToken>(completion_token), url_string, data, content_type, "");
   }
@@ -107,6 +107,6 @@ private:
   std::thread                                m_io_thread;
   std::shared_ptr<internal::request_manager> m_request_manager;
 };
-}
+}  // namespace asio_http
 
 #endif

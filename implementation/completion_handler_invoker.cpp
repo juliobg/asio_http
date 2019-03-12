@@ -20,7 +20,7 @@ void completion_handler_invoker::invoke_handler(const request_data& request_data
 {
   boost::asio::dispatch(
     request_data.m_completion_executor,
-    [ res = std::move(result), handler = request_data.m_completion_handler ]() mutable { handler(std::move(res)); });
+    [res = std::move(result), handler = request_data.m_completion_handler]() mutable { handler(std::move(res)); });
 }
-}
-}
+}  // namespace internal
+}  // namespace asio_http

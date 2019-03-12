@@ -20,6 +20,6 @@ class http_client_connection;
 void               http_request_stats_logging(const http_request_result& result);
 http_request_stats get_request_stats(http_client_connection*               connection,
                                      std::chrono::steady_clock::time_point creation_time);
-}
-}
+}  // namespace internal
+}  // namespace asio_http
 #endif

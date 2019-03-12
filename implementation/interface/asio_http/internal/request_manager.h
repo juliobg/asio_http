@@ -88,7 +88,7 @@ private:
   connection_pool                 m_connection_pool;
   request_list                    m_requests;
 };
-}
-}
+}  // namespace internal
+}  // namespace asio_http
 
 #endif

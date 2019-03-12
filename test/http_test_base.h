@@ -34,7 +34,7 @@ const std::string POST_RESOURCE                     = "/post";
 
 const std::string HTTP_CANCELLATION_TOKEN = "asio_httpTest";
 
-const uint32_t HTTP_CLIENT_POOL_SIZE = 25;
+const std::uint32_t HTTP_CLIENT_POOL_SIZE = 25;
 
 std::string get_url(const std::string resource)
 {
@@ -61,7 +61,7 @@ const std::function<void(std::shared_ptr<test_server::web_client>)> echo_handler
     const auto data = client_data->get_post_data();
     client_data->response_printf(std::string(data.begin(), data.end()).c_str());
   };
-}
+}  // namespace
 
 class post_data_queue
 {
@@ -139,7 +139,7 @@ protected:
   test_server::web_server m_web_server;
   std::thread             m_server_thread;
 };
-}
-}
+}  // namespace test
+}  // namespace asio_http
 
 #endif  // HTTPTESTBASE_H

@@ -52,7 +52,7 @@ void log_data(const std::string& url, const char* msg, size_t size, const std::s
   DLOG_F(INFO, "%s", is_printable(data) ? data.c_str() : hex_str(data).c_str());
 }
 #endif
-}
+}  // namespace
 
 http_request_stats get_request_stats(http_client_connection*               connection,
                                      std::chrono::steady_clock::time_point creation_time)
@@ -75,5 +75,5 @@ void http_request_stats_logging(const http_request_result& result)
   DLOG_F(INFO, "  Download speed: %" PRId64, result.stats.avg_download_speed_bps);
   DLOG_F(INFO, "  Upload speed: %" PRId64, result.stats.avg_upload_speed_bps);
 }
-}
-}
+}  // namespace internal
+}  // namespace asio_http

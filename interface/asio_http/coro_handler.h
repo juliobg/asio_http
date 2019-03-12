@@ -19,7 +19,7 @@ struct use_coro_t
 {
 };
 constexpr use_coro_t use_coro;
-}
+}  // namespace asio_http
 
 namespace boost
 {
@@ -42,7 +42,7 @@ class async_result<asio_http::use_coro_t, ReturnType(asio_http::http_request_res
   };
 
 public:
-  struct[[nodiscard]] Awaiter
+  struct [[nodiscard]] Awaiter
   {
     Awaiter(std::shared_ptr<shared_info> info)
         : m_shared_info(info)
@@ -88,6 +88,6 @@ public:
   async_result& operator=(const async_result&) = delete;
   return_type   get() { return Awaiter(m_shared_info); }
 };
-}
-}
+}  // namespace asio
+}  // namespace boost
 #endif

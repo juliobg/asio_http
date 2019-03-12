@@ -23,6 +23,8 @@ namespace asio_http
 {
 namespace test
 {
+using std::uint8_t;
+
 class http_test : public http_test_base
 {
 };
@@ -207,5 +209,5 @@ TEST_F(http_test, shutdown_in_progress)
   // get should throw an exception, as the promise is destroyed
   EXPECT_THROW(reply.get(), std::future_error);
 }
-}
-}
+}  // namespace test
+}  // namespace asio_http

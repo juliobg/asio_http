@@ -23,7 +23,7 @@ const std::string              CLIENT_CERTIFICATE_FILE("ClientCertificateFile");
 const std::string              PROXY("proxy");
 const std::vector<std::string> HTTP_HEADERS{ "a", "b", "c" };
 const std::vector<uint8_t>     POST_DATA{ 8, 2, 0 };
-}
+}  // namespace
 
 TEST(http_request_test, get_with_default_values)
 {
@@ -63,5 +63,5 @@ TEST(http_request_test, get_with_custom_values)
   EXPECT_EQ(CLIENT_PRIVATE_KEY_FILE, request->get_ssl_settings().client_private_key_file);
   EXPECT_EQ(CLIENT_CERTIFICATE_FILE, request->get_ssl_settings().client_certificate_file);
 }
-}
-}
+}  // namespace test
+}  // namespace asio_http

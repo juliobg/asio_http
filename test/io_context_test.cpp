@@ -68,5 +68,5 @@ TEST_F(io_context_test, executor_binding)
 
   m_io_context.run();
 }
-}
-}
+}  // namespace test
+}  // namespace asio_http

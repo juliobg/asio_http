@@ -76,8 +76,8 @@ public:
     return singleton;
   }
 };
-}
-}
+}  // namespace internal
+}  // namespace asio_http
 
 namespace std
 {
@@ -100,7 +100,7 @@ inline std::error_code make_error_code(boost::asio::error::basic_errors e)
 {
   return std::error_code(static_cast<int>(e), asio_http::internal::asio_mapped_error::get_singleton_system());
 }
-}
+}  // namespace std
 
 namespace boost
 {
@@ -111,8 +111,8 @@ struct is_error_code_enum<http_errno>
 {
   static const bool value = true;
 };
-}
-}
+}  // namespace system
+}  // namespace boost
 
 inline boost::system::error_code make_error_code(http_errno e)
 {

@@ -63,9 +63,10 @@ char* mystrnstr(const char* haystack, const char* needle, size_t len)
 const char server[]    = "HTTP Server";
 const char not_found[] = "Content-type: text/html\r\n\r\n<HTML><title>not found</title><body bgcolor=FFFFFF><font "
                          "size=6>404 Not found...</font><BR><BR><HR><small><i>%s</i></small></body></html>\n\r";
-const char range_msg[] = "Content-type: text/html\r\n\r\n<HTML><title>Requested Range Not Satisfiable</title><body "
-                         "bgcolor=FFFFFF><font size=6>416 Requested Range Not Satisfiable</font><BR><BR></body></html>\n\r";
-}
+const char range_msg[] =
+  "Content-type: text/html\r\n\r\n<HTML><title>Requested Range Not Satisfiable</title><body "
+  "bgcolor=FFFFFF><font size=6>416 Requested Range Not Satisfiable</font><BR><BR></body></html>\n\r";
+}  // namespace
 
 namespace asio_http
 {
@@ -464,7 +465,7 @@ class web_server
 public:
   web_server(boost::asio::io_context&                                                io_context,
              const std::string&                                                      address,
-             const uint16_t                                                          port,
+             const std::uint16_t                                                     port,
              std::map<std::string, std::function<void(std::shared_ptr<web_client>)>> handlers)
       : m_io_context(io_context)
       , m_endpoint(boost::asio::ip::address::from_string(address), port)
@@ -496,5 +497,5 @@ private:
   std::vector<std::shared_ptr<web_client>>                                                 m_clients;
   std::shared_ptr<std::map<std::string, std::function<void(std::shared_ptr<web_client>)>>> m_handlers_map;
 };
-}
-}
+}  // namespace test_server
+}  // namespace asio_http

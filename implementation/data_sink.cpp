@@ -17,6 +17,9 @@ namespace asio_http
 {
 namespace internal
 {
+using std::uint32_t;
+using std::uint8_t;
+
 uint32_t data_sink::write_callback(const void* data, uint32_t size, uint32_t count)
 {
   uint32_t ret = size * count;
@@ -31,13 +34,10 @@ std::vector<uint8_t> data_sink::get_data() const
   {
     case compression::none:
       return { str.begin(), str.end() };
-      break;
     case compression::deflate:
       return decompress_deflate(std::vector<uint8_t>(str.begin(), str.end()));
-      break;
     case compression::gzip:
       return decompress_gzip(std::vector<uint8_t>(str.begin(), str.end()));
-      break;
   }
 }
 
@@ -60,5 +60,5 @@ void data_sink::header_callback(const std::string& header)
     }
   }
 }
-}
-}
+}  // namespace internal
+}  // namespace asio_http

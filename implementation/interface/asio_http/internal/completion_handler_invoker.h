@@ -19,7 +19,7 @@ class completion_handler_invoker
 public:
   static void invoke_handler(const request_data& request_data, http_request_result result);
 };
-}
-}
+}  // namespace internal
+}  // namespace asio_http
 
 #endif

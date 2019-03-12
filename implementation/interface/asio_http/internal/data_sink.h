@@ -23,8 +23,8 @@ public:
   }
   data_sink(const data_sink&) = delete;
 
-  uint32_t             write_callback(const void* data, uint32_t size, uint32_t count);
-  std::vector<uint8_t> get_data() const;
+  std::uint32_t             write_callback(const void* data, std::uint32_t size, std::uint32_t count);
+  std::vector<std::uint8_t> get_data() const;
 
   // used to find Content-Encoding: deflate headers
   void header_callback(const std::string& header);
@@ -40,7 +40,7 @@ private:
   };
   compression m_compression;
 };
-}
-}
+}  // namespace internal
+}  // namespace asio_http
 
 #endif

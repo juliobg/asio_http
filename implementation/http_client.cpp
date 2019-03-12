@@ -54,6 +54,6 @@ void http_client::io_context_thread()
 void http_client::cancel_requests(const std::string& cancellation_token)
 {
   m_request_manager->get_strand().post(
-    [ ptr = m_request_manager, cancellation_token ]() { ptr->cancel_requests(cancellation_token); });
+    [ptr = m_request_manager, cancellation_token]() { ptr->cancel_requests(cancellation_token); });
 }
 }  // namespace asio_http

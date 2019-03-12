@@ -72,7 +72,7 @@ struct request_buffers
     m_current_header.second.clear();
   }
 
-  std::vector<uint8_t> print_request_headers()
+  std::vector<std::uint8_t> print_request_headers()
   {
     std::stringstream request_headers;
     request_headers << http_method_to_string(m_request->get_http_method()) << " " << m_request->get_url().path
@@ -91,7 +91,7 @@ struct request_buffers
 
     const std::string headers = request_headers.str();
 
-    return std::vector<uint8_t>(headers.begin(), headers.end());
+    return std::vector<std::uint8_t>(headers.begin(), headers.end());
   }
 };
 
@@ -99,13 +99,13 @@ struct http_client_connection
     : transport_layer
     , std::enable_shared_from_this<http_client_connection>
 {
-  http_client_connection(boost::asio::io_context::strand& strand, std::pair<std::string, uint16_t> host);
+  http_client_connection(boost::asio::io_context::strand& strand, std::pair<std::string, std::uint16_t> host);
   ~http_client_connection() { m_socket->set_upper(nullptr); }
   void         start(std::shared_ptr<const http_request_interface>                                           request,
                      std::function<void(std::shared_ptr<http_client_connection>, boost::system::error_code)> callback);
   virtual void on_connected(const boost::system::error_code& ec) override;
   virtual void on_write(const boost::system::error_code& ec) override;
-  virtual void on_read(const uint8_t* data, std::size_t size, boost::system::error_code ec) override;
+  virtual void on_read(const std::uint8_t* data, std::size_t size, boost::system::error_code ec) override;
   void         start_read();
   void         write_handler(const boost::system::error_code& error, std::size_t bytes_transferred);
   void         write_body_handler(const boost::system::error_code& error, std::size_t bytes_transferred);
@@ -123,7 +123,7 @@ struct http_client_connection
   http_parser_settings                                                                    m_settings;
   http_parser                                                                             m_parser;
   std::function<void(std::shared_ptr<http_client_connection>, boost::system::error_code)> m_completed_request_callback;
-  std::pair<std::string, uint16_t>                                                        m_host_port;
+  std::pair<std::string, std::uint16_t>                                                   m_host_port;
 
   std::unique_ptr<request_buffers> m_current_request;
   std::shared_ptr<transport_layer> m_socket;
@@ -136,19 +136,16 @@ struct http_client_connection
     return m_parser.status_code;
   }
 
-  std::pair<std::string, uint16_t> get_host_and_port() const { return m_host_port; }
+  std::pair<std::string, std::uint16_t> get_host_and_port() const { return m_host_port; }
 
-  std::vector<uint8_t> get_data() const
+  std::vector<std::uint8_t> get_data() const
   {
-    return m_current_request ? m_current_request->m_data_sink.get_data() : std::vector<uint8_t>();
+    return m_current_request ? m_current_request->m_data_sink.get_data() : std::vector<std::uint8_t>();
   }
 
   std::vector<std::string> get_reply_headers() const { return m_current_request->m_headers; }
 
-  void cancel(bool silent = false)
-  {
-    complete_request(boost::asio::error::operation_aborted, true, silent);
-  }
+  void cancel(bool silent = false) { complete_request(boost::asio::error::operation_aborted, true, silent); }
 
   void complete_request(boost::system::error_code ec, bool close = false, bool silent = false)
   {
@@ -170,8 +167,8 @@ struct http_client_connection
   bool is_valid_connection() { return m_socket->is_open(); }
 };
 
-inline http_client_connection::http_client_connection(boost::asio::io_context::strand& strand,
-                                                      std::pair<std::string, uint16_t> host)
+inline http_client_connection::http_client_connection(boost::asio::io_context::strand&      strand,
+                                                      std::pair<std::string, std::uint16_t> host)
     : transport_layer(nullptr)
     , m_strand(strand)
     , m_settings()
@@ -211,11 +208,16 @@ inline void http_client_connection::start(
   }
   else if (request->get_url().protocol == "https")
   {
-    m_socket = ssl_socket::connect(this, m_strand.context(), request->get_url().host, std::to_string(request->get_url().port), request->get_ssl_settings());
+    m_socket = ssl_socket::connect(this,
+                                   m_strand.context(),
+                                   request->get_url().host,
+                                   std::to_string(request->get_url().port),
+                                   request->get_ssl_settings());
   }
   else
   {
-    m_socket = tcp_socket::connect(this, m_strand.context(), request->get_url().host, std::to_string(request->get_url().port));
+    m_socket =
+      tcp_socket::connect(this, m_strand.context(), request->get_url().host, std::to_string(request->get_url().port));
   }
 }
 
@@ -248,7 +250,7 @@ inline void http_client_connection::on_write(const boost::system::error_code& ec
   }
   else
   {
-    std::vector<uint8_t> buf(1024);
+    std::vector<std::uint8_t> buf(1024);
     auto count = m_current_request->m_data_source.read_callback(reinterpret_cast<char*>(buf.data()), buf.size());
     if (count != 0)
     {
@@ -262,7 +264,7 @@ inline void http_client_connection::on_write(const boost::system::error_code& ec
   }
 }
 
-inline void http_client_connection::on_read(const uint8_t* data, std::size_t size, boost::system::error_code ec)
+inline void http_client_connection::on_read(const std::uint8_t* data, std::size_t size, boost::system::error_code ec)
 {
   if (!ec || ec == boost::asio::error::eof)
   {
@@ -342,7 +344,7 @@ inline int http_client_connection::on_header_value(http_parser* parser, const ch
   }
   return 0;
 }
-}
-}
+}  // namespace internal
+}  // namespace asio_http
 
 #endif

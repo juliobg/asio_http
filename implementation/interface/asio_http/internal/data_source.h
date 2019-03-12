@@ -21,19 +21,19 @@ class data_source
 {
 public:
   data_source(const data_source&) = delete;
-  data_source(std::vector<uint8_t> data, http_request_interface::compression_policy policy);
+  data_source(std::vector<std::uint8_t> data, http_request_interface::compression_policy policy);
 
   size_t read_callback(char* data, size_t size);
 
   // this is needed if the peer is using a 3XX redirect
-  bool seek_callback(int32_t offset, std::ios_base::seekdir origin);
+  bool seek_callback(std::int32_t offset, std::ios_base::seekdir origin);
 
   std::size_t get_size() const { return m_size; }
 
   std::vector<std::string> get_encoding_headers() { return m_encoding_headers; }
 
 private:
-  data_source(const std::pair<std::vector<uint8_t>, std::vector<std::string>>& data)
+  data_source(const std::pair<std::vector<std::uint8_t>, std::vector<std::string>>& data)
       : m_data(std::string(data.first.begin(), data.first.end()))
       , m_size(data.first.size())
       , m_encoding_headers(data.second)
@@ -43,7 +43,7 @@ private:
   std::size_t              m_size;
   std::vector<std::string> m_encoding_headers;
 };
-}
-}
+}  // namespace internal
+}  // namespace asio_http
 
 #endif

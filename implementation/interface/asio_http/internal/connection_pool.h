@@ -25,13 +25,14 @@ public:
       : m_strand(strand)
   {
   }
-  std::shared_ptr<http_client_connection> get_connection(const std::pair<std::string, uint16_t>& host);
+  std::shared_ptr<http_client_connection> get_connection(const std::pair<std::string, std::uint16_t>& host);
   void release_connection(std::shared_ptr<http_client_connection> handle, bool clean_up);
 
 private:
-  boost::asio::io_context::strand                                                                 m_strand;
-  std::map<std::pair<std::string, uint16_t>, std::stack<std::shared_ptr<http_client_connection>>> m_connection_pool;
+  boost::asio::io_context::strand m_strand;
+  std::map<std::pair<std::string, std::uint16_t>, std::stack<std::shared_ptr<http_client_connection>>>
+    m_connection_pool;
 };
-}
-}
+}  // namespace internal
+}  // namespace asio_http
 #endif

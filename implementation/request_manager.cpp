@@ -83,7 +83,7 @@ void request_manager::handle_completed_request(Index& index, const Iterator& ite
 {
   create_request_result(*iterator, ec);
   index.erase(iterator);
-  m_strand.post([ ptr = this->shared_from_this()]() { ptr->execute_waiting_requests(); });
+  m_strand.post([ptr = this->shared_from_this()]() { ptr->execute_waiting_requests(); });
 }
 
 void request_manager::release_http_client_connection_handle(const request_data& request, std::error_code ec)
@@ -101,7 +101,7 @@ void request_manager::create_request_result(const request_data& request, std::er
   http_request_result result(request.m_http_request,
                              connection ? connection->get_response_code() : 0,
                              connection ? connection->get_reply_headers() : std::vector<std::string>(),
-                             connection ? connection->get_data() : std::vector<uint8_t>(),
+                             connection ? connection->get_data() : std::vector<std::uint8_t>(),
                              ec,
                              get_request_stats(request.m_connection.get(), request.m_creation_time));
 
@@ -157,5 +157,5 @@ void request_manager::execute_waiting_requests()
     handle->start(request, [this](auto&& handle, auto&& ec) { this->on_request_completed(handle, ec); });
   }
 }
-}
-}
+}  // namespace internal
+}  // namespace asio_http

@@ -19,7 +19,7 @@ struct use_std_future_t
 {
 };
 constexpr use_std_future_t use_std_future;
-}
+}  // namespace asio_http
 
 namespace boost
 {
@@ -53,6 +53,6 @@ public:
   async_result& operator=(const async_result&) = delete;
   return_type   get() { return std::move(m_future); }
 };
-}
-}
+}  // namespace asio
+}  // namespace boost
 #endif

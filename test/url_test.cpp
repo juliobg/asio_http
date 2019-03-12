@@ -42,5 +42,5 @@ TEST(url_test, compare)
   EXPECT_FALSE(url_a1 == url_b);
   EXPECT_TRUE(url_a1 != url_b);
 }
-}
-}
+}  // namespace test
+}  // namespace asio_http

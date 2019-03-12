@@ -12,7 +12,8 @@ namespace asio_http
 {
 namespace internal
 {
-std::shared_ptr<http_client_connection> connection_pool::get_connection(const std::pair<std::string, uint16_t>& host)
+std::shared_ptr<http_client_connection>
+connection_pool::get_connection(const std::pair<std::string, std::uint16_t>& host)
 {
   std::shared_ptr<http_client_connection> handle;
 
@@ -44,5 +45,5 @@ void connection_pool::release_connection(std::shared_ptr<http_client_connection>
     m_connection_pool[host].push(handle);
   }
 }
-}
-}
+}  // namespace internal
+}  // namespace asio_http

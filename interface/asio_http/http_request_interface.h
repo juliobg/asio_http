@@ -60,7 +60,7 @@ public:
   virtual http_method get_http_method() const = 0;
 
   // Get the timeout in milliseconds after which the request is aborted
-  virtual uint32_t get_timeout_msec() const = 0;
+  virtual std::uint32_t get_timeout_msec() const = 0;
 
   // Get the url for this request
   virtual url get_url() const = 0;
@@ -75,10 +75,10 @@ public:
   virtual std::vector<std::string> get_http_headers() const = 0;
 
   // Get the data to send in a request or an empty vector
-  virtual std::vector<uint8_t> get_post_data() const = 0;
+  virtual std::vector<std::uint8_t> get_post_data() const = 0;
 
   // Should the data returned by get_post_data be compressed with zlib before sending
   virtual compression_policy get_compress_post_data_policy() const = 0;
 };
-}
+}  // namespace asio_http
 #endif

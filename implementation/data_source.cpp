@@ -14,6 +14,8 @@ namespace internal
 {
 namespace
 {
+using std::uint8_t;
+
 auto compress_data_source(std::vector<uint8_t> data, http_request_interface::compression_policy policy)
 {
   if (policy != http_request_interface::compression_policy::never && !data.empty())
@@ -28,7 +30,7 @@ auto compress_data_source(std::vector<uint8_t> data, http_request_interface::com
   }
   return std::make_pair(data, std::vector<std::string>{});
 }
-}
+}  // namespace
 
 data_source::data_source(std::vector<uint8_t> data, http_request_interface::compression_policy policy)
     : data_source(compress_data_source(std::move(data), policy))
@@ -42,11 +44,11 @@ size_t data_source::read_callback(char* data, size_t size)
   return static_cast<size_t>(m_data.gcount());
 }
 
-bool data_source::seek_callback(int32_t offset, std::ios_base::seekdir origin)
+bool data_source::seek_callback(std::int32_t offset, std::ios_base::seekdir origin)
 {
   m_data.clear();
   m_data.seekg(static_cast<std::streamoff>(offset), origin);
   return m_data.good();
 }
-}
-}
+}  // namespace internal
+}  // namespace asio_http

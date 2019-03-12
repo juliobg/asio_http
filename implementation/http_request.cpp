@@ -8,16 +8,16 @@
 
 namespace asio_http
 {
-const uint32_t http_request::DEFAULT_TIMEOUT_MSEC;
+const std::uint32_t http_request::DEFAULT_TIMEOUT_MSEC;
 
-http_request::http_request(http_method              http_method,
-                           url                      url,
-                           std::string              proxy,
-                           uint32_t                 timeout_msec,
-                           ssl_settings             certificates,
-                           std::vector<std::string> http_headers,
-                           std::vector<uint8_t>     post_data,
-                           compression_policy       compression_policy)
+http_request::http_request(http_method               http_method,
+                           url                       url,
+                           std::string               proxy,
+                           std::uint32_t             timeout_msec,
+                           ssl_settings              certificates,
+                           std::vector<std::string>  http_headers,
+                           std::vector<std::uint8_t> post_data,
+                           compression_policy        compression_policy)
     : m_http_method(http_method)
     , m_url(url)
     , m_proxy(proxy)
@@ -34,4 +34,4 @@ std::shared_ptr<http_request_interface> http_request_builder::create_request() c
   return std::make_shared<http_request>(
     http_method, request_url, proxy, timeout_msec, certificates, http_headers, post_data, compress_data);
 }
-}
+}  // namespace asio_http

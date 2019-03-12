@@ -14,14 +14,14 @@ namespace asio_http
 {
 namespace internal
 {
-std::vector<uint8_t> compress(const std::vector<uint8_t>& data);
+std::vector<std::uint8_t> compress(const std::vector<std::uint8_t>& data);
 
-std::vector<uint8_t> compress(const std::vector<uint8_t>& data, int compression_level);
+std::vector<std::uint8_t> compress(const std::vector<std::uint8_t>& data, int compression_level);
 
-std::vector<uint8_t> decompress_gzip(const std::vector<uint8_t>& data);
+std::vector<std::uint8_t> decompress_gzip(const std::vector<std::uint8_t>& data);
 
-std::vector<uint8_t> decompress_deflate(const std::vector<uint8_t>& data);
-}
-}
+std::vector<std::uint8_t> decompress_deflate(const std::vector<std::uint8_t>& data);
+}  // namespace internal
+}  // namespace asio_http
 
 #endif
