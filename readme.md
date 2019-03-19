@@ -5,6 +5,9 @@ asio_http
 
 This is an http client library for Boost.Asio. It is intended to be simple and easy-to-use for the asynchronous consumption of REST APIs.
 
+Compared to popular Boost Beast, which provides low-level HTTP/1 and WebSockets foundation, this library is thought to offer a high level HTTP client that is able to manage several simultaneous requests, in a similar fashion to Python Tornado or .NET HttpClient class.
+
+Eventually this library may be refactored to use Boost Beast for lower level HTTP operations, or HTTP parsing. Right now it is using Joyent HTTP parser.
 
 Features
 --------
