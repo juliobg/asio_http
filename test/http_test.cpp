@@ -1,6 +1,6 @@
 /**
     asio_http: http client library for boost asio
-    Copyright (c) 2017 Julio Becerra Gomez
+    Copyright (c) 2017-2019 Julio Becerra Gomez
     See COPYING for license information.
 */
 
@@ -196,7 +196,7 @@ TEST_F(http_test, empty_cancellation_token)
   EXPECT_EQ(future.wait_for(std::chrono::seconds(0)), std::future_status::timeout);
 }
 
-TEST_F(http_test, shutdown_in_progress)
+TEST_F(http_test, DISABLED_shutdown_in_progress)
 {
   std::future<http_request_result> reply = m_http_client->get(use_std_future, get_url(TIMEOUT_RESOURCE));
 

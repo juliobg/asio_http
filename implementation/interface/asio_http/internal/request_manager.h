@@ -1,6 +1,6 @@
 /**
     asio_http: http client library for boost asio
-    Copyright (c) 2017 Julio Becerra Gomez
+    Copyright (c) 2017-2019 Julio Becerra Gomez
     See COPYING for license information.
 */
 
@@ -28,7 +28,7 @@ class http_request_result;
 
 namespace internal
 {
-class request_data;
+struct request_data;
 
 class request_manager : public std::enable_shared_from_this<request_manager>
 {

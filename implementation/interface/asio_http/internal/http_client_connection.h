@@ -1,6 +1,6 @@
 /**
     asio_http: http client library for boost asio
-    Copyright (c) 2017 Julio Becerra Gomez
+    Copyright (c) 2017-2019 Julio Becerra Gomez
     See COPYING for license information.
 */
 
@@ -149,7 +149,7 @@ struct http_client_connection
 
   void complete_request(boost::system::error_code ec, bool close = false, bool silent = false)
   {
-    if (ec || close)
+    if ((ec || close) && m_socket->is_open())
     {
       m_socket->close();
     }

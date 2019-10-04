@@ -1,6 +1,6 @@
 /**
     asio_http: http client library for boost asio
-    Copyright (c) 2017 Julio Becerra Gomez
+    Copyright (c) 2017-2019 Julio Becerra Gomez
     See COPYING for license information.
 */
 
@@ -108,8 +108,9 @@ class http_test_base : public ::testing::Test
 {
 protected:
   http_test_base()
-      : m_http_client(new http_client(http_client_settings{ HTTP_CLIENT_POOL_SIZE }))
-      , m_web_server(m_server_io_context,
+      : m_http_client(new http_client(http_client_settings{ HTTP_CLIENT_POOL_SIZE }, m_client_io_context))
+      , m_client_thread([&]() { auto work = boost::asio::make_work_guard(m_client_io_context.get_executor()); m_client_io_context.run(); })
+      , m_web_server(m_client_io_context,
                      "127.0.0.1",
                      10123,
                      { { GET_RESOURCE, get_handler },
@@ -119,25 +120,24 @@ protected:
                          [&](std::shared_ptr<test_server::web_client> client_data) {
                            m_post_data_queue.add_request_post_data(client_data);
                          } } })
-      , m_server_thread([&]() { m_server_io_context.run(); })
   {
   }
 
   virtual ~http_test_base()
   {
-    m_server_io_context.stop();
-    m_server_thread.join();
+    m_client_io_context.stop();
+    m_client_thread.join();
   }
 
+  // iocontext used to run the client
+  boost::asio::io_context m_client_io_context;
   boost::asio::io_context      m_io_context;
   std::unique_ptr<http_client> m_http_client;
 
-  post_data_queue m_post_data_queue;
+  std::thread m_client_thread;
 
-  // iocontext used to run the test server
-  boost::asio::io_context m_server_io_context;
+  post_data_queue m_post_data_queue;
   test_server::web_server m_web_server;
-  std::thread             m_server_thread;
 };
 }  // namespace test
 }  // namespace asio_http

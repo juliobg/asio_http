@@ -1,6 +1,6 @@
 /**
     asio_http: http client library for boost asio
-    Copyright (c) 2017 Julio Becerra Gomez
+    Copyright (c) 2017-2019 Julio Becerra Gomez
     See COPYING for license information.
 */
 
@@ -16,13 +16,6 @@
 
 namespace asio_http
 {
-http_client::http_client(const http_client_settings& settings)
-    : m_io_context(m_internal_io_context)
-    , m_io_thread([this]() { io_context_thread(); })
-    , m_request_manager(std::make_shared<internal::request_manager>(settings, m_io_context))
-{
-}
-
 http_client::http_client(const http_client_settings& settings, boost::asio::io_context& io_context)
     : m_io_context(io_context)
     , m_request_manager(std::make_shared<internal::request_manager>(settings, m_io_context))
@@ -31,24 +24,6 @@ http_client::http_client(const http_client_settings& settings, boost::asio::io_c
 
 http_client::~http_client()
 {
-  if (m_io_thread.joinable())
-  {
-    shut_down_io_context();
-  }
-}
-
-void http_client::shut_down_io_context()
-{
-  m_io_context.stop();
-  m_io_thread.join();
-}
-
-void http_client::io_context_thread()
-{
-  auto work = boost::asio::make_work_guard(m_io_context.get_executor());
-
-  boost::system::error_code error_code;
-  m_io_context.run(error_code);
 }
 
 void http_client::cancel_requests(const std::string& cancellation_token)

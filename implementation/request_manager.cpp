@@ -1,6 +1,6 @@
 /**
     asio_http: http client library for boost asio
-    Copyright (c) 2017 Julio Becerra Gomez
+    Copyright (c) 2017-2019 Julio Becerra Gomez
     See COPYING for license information.
 */
 
@@ -34,14 +34,6 @@ request_manager::request_manager(const http_client_settings& settings, boost::as
 
 request_manager::~request_manager()
 {
-  auto& index = m_requests.get<index_connection>();
-  for (auto it = index.begin(); it != index.end(); ++it)
-  {
-    if (m_requests.get<index_connection>().begin()->m_connection)
-    {
-      m_requests.get<index_connection>().begin()->m_connection->cancel(true);
-    }
-  }
 }
 
 void request_manager::execute_request(const request_data& request)

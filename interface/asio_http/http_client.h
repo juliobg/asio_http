@@ -1,6 +1,6 @@
 /**
     asio_http: http client library for boost asio
-    Copyright (c) 2017 Julio Becerra Gomez
+    Copyright (c) 2017-2019 Julio Becerra Gomez
     See COPYING for license information.
 */
 
@@ -21,8 +21,6 @@ namespace asio_http
 class http_client
 {
 public:
-  explicit http_client(const http_client_settings& settings);
-
   http_client(const http_client_settings& settings, boost::asio::io_context& io_context);
 
   virtual ~http_client();
@@ -98,13 +96,8 @@ public:
   void cancel_requests(const std::string& cancellation_token);
 
 private:
-  void shut_down_io_context();
-  void io_context_thread();
-
   // Declaration (initialization) order is relevant for the members below
-  boost::asio::io_context                    m_internal_io_context;
   boost::asio::io_context&                   m_io_context;
-  std::thread                                m_io_thread;
   std::shared_ptr<internal::request_manager> m_request_manager;
 };
 }  // namespace asio_http

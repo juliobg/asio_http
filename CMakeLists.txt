@@ -1,10 +1,11 @@
 #
 #    asio_http: http client library for boost asio
-#    Copyright (c) 2017 Julio Becerra Gomez 
+#    Copyright (c) 2017-2019 Julio Becerra Gomez
 #    See COPYING for license information.
 #
 
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 3.15)
+include(FetchContent)
 project(asio_http)
 
 option(BUILD_ASIO_HTTP_TESTS "build tests and examples")
@@ -79,8 +80,6 @@ add_library(${PROJECT_NAME} STATIC
   ${IMPLEMENTATION_HEADERS}
 )
 
-#target_compile_features(asio_http PRIVATE cxx_std_14)
-
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
     ${Boost_LIBRARIES}
@@ -99,25 +98,18 @@ target_include_directories(${PROJECT_NAME}
     interface
 )
 
-# Download and unpack googletest at configure time
-configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
-execute_process(COMMAND "${CMAKE_COMMAND}" -G "${CMAKE_GENERATOR}" .
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/googletest-download" )
-execute_process(COMMAND "${CMAKE_COMMAND}" --build .
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/googletest-download" )
-
 # Prevent GoogleTest from overriding our compiler/linker options
 # when building with Visual Studio
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
-# Add googletest directly to our build. This adds
-# the following targets: gtest, gtest_main, gmock
-# and gmock_main
-add_subdirectory("${CMAKE_BINARY_DIR}/googletest-src"
-                 "${CMAKE_BINARY_DIR}/googletest-build")
-
 enable_testing()
 if(BUILD_ASIO_HTTP_TESTS)
+  FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG        release-1.8.0
+  )
+  FetchContent_MakeAvailable(googletest)
   add_subdirectory(test)
   add_subdirectory(test_server)
   add_subdirectory(examples)

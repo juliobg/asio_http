@@ -1,16 +1,10 @@
 #
 #    asio_http: http client library for boost asio
-#    Copyright (c) 2017 Julio Becerra Gomez 
+#    Copyright (c) 2017-2019 Julio Becerra Gomez
 #    See COPYING for license information.
 #
 
 project(asio_http.TestServer)
-
-#set(INTERFACE_FILES
-#  interface/asio_http/TestServer/TestServer.h
-#)
-#set(IMPLEMENTATION_SOURCES
-#)
 
 add_library(${PROJECT_NAME} INTERFACE
 )

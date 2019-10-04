@@ -1,6 +1,6 @@
 /**
     asio_http: http client library for boost asio
-    Copyright (c) 2017 Julio Becerra Gomez
+    Copyright (c) 2017-2019 Julio Becerra Gomez
     See COPYING for license information.
 */
 
@@ -39,7 +39,7 @@ TEST_F(io_context_test, get_request)
   EXPECT_EQ(200, result.http_response_code);
 }
 
-TEST_F(io_context_test, request_manager_destruction)  // To be run with ASAN configuration
+TEST_F(io_context_test, DISABLED_request_manager_destruction)  // To be run with ASAN configuration
 {
   auto result_future = m_http_client->get(use_std_future, get_url(GET_RESOURCE), HTTP_CANCELLATION_TOKEN);
 
