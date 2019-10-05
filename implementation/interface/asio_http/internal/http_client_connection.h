@@ -145,7 +145,7 @@ struct http_client_connection
 
   std::vector<std::string> get_reply_headers() const { return m_current_request->m_headers; }
 
-  void cancel() { complete_request(boost::asio::error::operation_aborted, true); }
+  void cancel() { complete_request(boost::asio::error::operation_aborted); }
 
   void complete_request(boost::system::error_code ec, bool close = false)
   {
