@@ -107,7 +107,7 @@ void request_manager::on_request_completed(std::shared_ptr<http_client_connectio
   if (it != m_requests.get<index_connection>().end())
   {
     if ((ec == boost::asio::error::broken_pipe || ec == boost::asio::error::connection_reset ||
-         ec == HPE_INVALID_EOF_STATE) &&
+         ec == HPE_INVALID_EOF_STATE || ec == boost::asio::error::eof) &&
         it->m_retries == 0)
     {
       m_connection_pool.release_connection(it->m_connection, static_cast<bool>(ec));
@@ -117,7 +117,7 @@ void request_manager::on_request_completed(std::shared_ptr<http_client_connectio
         request.m_connection = new_handle;
         request.m_retries++;
       });
-      new_handle->start(request, [this](auto&& handle, auto&& ec) { this->on_request_completed(handle, ec); });
+      new_handle->start(request, [ptr = this->shared_from_this()](auto&& handle, auto&& ec) { ptr->on_request_completed(handle, ec); });
     }
     else
     {

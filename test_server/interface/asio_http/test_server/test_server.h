@@ -85,6 +85,7 @@ public:
       , m_content_size(0)
       , m_requested_range(0)
       , m_handlers_map(handlers_map)
+      , m_can_close(false)
   {
   }
   std::vector<char>                                                                        m_read_buffer;
@@ -99,6 +100,7 @@ public:
   std::size_t                                                                              m_requested_range;
   std::map<std::string, std::string>                                                       m_headers;
   std::shared_ptr<std::map<std::string, std::function<void(std::shared_ptr<web_client>)>>> m_handlers_map;
+  bool m_can_close;
 
   void start_reading()
   {
@@ -412,6 +414,7 @@ public:
                         node->writelength - node->wheadersize);*/
     m_output_buffer.insert(std::end(m_output_buffer), std::begin(m_response_buffer), std::end(m_response_buffer));
     client_send();
+    m_can_close = true;
   }
 
   void web_client_writef(const char* fmt, ...)
@@ -438,6 +441,10 @@ public:
       m_socket.async_write_some(boost::asio::buffer(m_write_buffer), [shared](auto error_code, auto size) mutable {
         shared->write_client(error_code, size);
       });
+    }
+    else if (m_can_close)
+    {
+        m_socket.close();
     }
   }
 

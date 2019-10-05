@@ -129,6 +129,7 @@ struct http_client_connection
   std::shared_ptr<transport_layer> m_socket;
 
   boost::asio::deadline_timer m_timer;
+  bool                        m_not_reusable;
 
   unsigned int get_response_code() const
   {
@@ -147,10 +148,11 @@ struct http_client_connection
 
   void cancel() { complete_request(boost::asio::error::operation_aborted); }
 
-  void complete_request(boost::system::error_code ec, bool close = false)
+  void complete_request(boost::system::error_code ec)
   {
-    if ((ec || close) && m_socket->is_open())
+    if ((ec || m_not_reusable) && m_socket->is_open())
     {
+      m_not_reusable = true;
       m_socket->close();
     }
     if (m_current_request->m_state != connection_state::done)
@@ -172,6 +174,7 @@ inline http_client_connection::http_client_connection(boost::asio::io_context::s
     , m_parser()
     , m_host_port(host)
     , m_timer(strand.context())
+    , m_not_reusable(false)
 {
   http_parser_init(&m_parser, HTTP_RESPONSE);
   m_parser.data                  = this;
@@ -263,22 +266,27 @@ inline void http_client_connection::on_write(const boost::system::error_code& ec
 
 inline void http_client_connection::on_read(const std::uint8_t* data, std::size_t size, boost::system::error_code ec)
 {
-  if (!ec || ec == boost::asio::error::eof)
+  if (ec)
+  {
+    m_not_reusable = true;
+  }
+  // If there is available data, try to parse response, and ignore errors
+  if (size != 0 && m_current_request->m_state != connection_state::done)
   {
     const char* d = reinterpret_cast<const char*>(data);
-
     std::size_t nsize = http_parser_execute(&m_parser, &m_settings, d, size);
+
     if (nsize != size)
     {
       complete_request(HTTP_PARSER_ERRNO(&m_parser));
-      return;
-    }
-    if (m_current_request->m_state != connection_state::done)
-    {
-      m_socket->read();
     }
   }
-  else
+  // connection_state may have changed after call to http_parser_execute
+  if (!ec && m_current_request->m_state != connection_state::done)
+  {
+      m_socket->read();
+  }
+  else if (ec && m_current_request->m_state != connection_state::done)
   {
     complete_request(ec);
   }
@@ -294,7 +302,11 @@ inline int http_client_connection::on_body(http_parser* parser, const char* at, 
 inline int http_client_connection::on_message_complete(http_parser* parser)
 {
   http_client_connection* obj = static_cast<http_client_connection*>(parser->data);
-  obj->complete_request(boost::system::error_code(), http_should_keep_alive(parser) == 0);
+  if (http_should_keep_alive(parser) == 0)
+  {
+      obj->m_not_reusable = true;
+  }
+  obj->complete_request(boost::system::error_code());
 
   return 0;
 }
