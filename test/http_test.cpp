@@ -192,11 +192,11 @@ TEST_F(http_test, empty_cancellation_token)
 
   std::this_thread::sleep_for(std::chrono::seconds(1));
 
-  // Request should not be cancelled
-  EXPECT_EQ(future.wait_for(std::chrono::seconds(0)), std::future_status::timeout);
+  // Request should be cancelled
+  EXPECT_EQ(std::make_error_code(boost::asio::error::operation_aborted), future.get().error);
 }
 
-TEST_F(http_test, DISABLED_shutdown_in_progress)
+TEST_F(http_test, shutdown_in_progress)
 {
   std::future<http_request_result> reply = m_http_client->get(use_std_future, get_url(TIMEOUT_RESOURCE));
 
@@ -207,7 +207,7 @@ TEST_F(http_test, DISABLED_shutdown_in_progress)
   m_http_client.reset();
 
   // get should throw an exception, as the promise is destroyed
-  EXPECT_THROW(reply.get(), std::future_error);
+  EXPECT_EQ(std::make_error_code(boost::asio::error::operation_aborted), reply.get().error);
 }
 }  // namespace test
 }  // namespace asio_http

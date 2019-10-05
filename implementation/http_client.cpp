@@ -24,6 +24,8 @@ http_client::http_client(const http_client_settings& settings, boost::asio::io_c
 
 http_client::~http_client()
 {
+  m_request_manager->get_strand().post(
+              [ptr = m_request_manager]() { ptr->cancel_requests({}); });
 }
 
 void http_client::cancel_requests(const std::string& cancellation_token)

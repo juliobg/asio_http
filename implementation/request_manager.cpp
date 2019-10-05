@@ -45,15 +45,11 @@ void request_manager::execute_request(const request_data& request)
 
 void request_manager::cancel_requests(const std::string& cancellation_token)
 {
-  if (!cancellation_token.empty())
+  request_list::index_iterator<index_cancellation>::type it;
+  auto& index = m_requests.get<index_cancellation>();
+  while ((it = cancellation_token.empty()? index.begin() : index.find(cancellation_token)) != index.end())
   {
-    auto& index = m_requests.get<index_cancellation>();
-
-    request_list::index_iterator<index_cancellation>::type it;
-    while ((it = index.find(cancellation_token)) != index.end())
-    {
-      cancel_request(index, it);
-    }
+    cancel_request(index, it);
   }
 }
 
@@ -146,7 +142,7 @@ void request_manager::execute_waiting_requests()
       request.m_connection    = handle;
       request.m_request_state = request_state::in_progress;
     });
-    handle->start(request, [this](auto&& handle, auto&& ec) { this->on_request_completed(handle, ec); });
+    handle->start(request, [ptr = this->shared_from_this()](auto&& handle, auto&& ec) { ptr->on_request_completed(handle, ec); });
   }
 }
 }  // namespace internal
