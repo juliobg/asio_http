@@ -110,14 +110,14 @@ public:
                              [shared](auto error_code, auto size) mutable { shared->read_client(error_code, size); });
   }
 
-  void read_client(const boost::system::error_code& aError, size_t aSize)
+  void read_client(const boost::system::error_code& error, size_t size)
   {
     int         tmp, tmp1;
     const char *tmp2, *tmp3;
 
-    if ((boost::asio::error::eof != aError) && (boost::asio::error::connection_reset != aError))
+    if ((boost::asio::error::eof != error) && (boost::asio::error::connection_reset != error))
     {
-      m_request_buffer.insert(std::end(m_request_buffer), std::begin(m_read_buffer), std::begin(m_read_buffer) + aSize);
+      m_request_buffer.insert(std::end(m_request_buffer), std::begin(m_read_buffer), std::begin(m_read_buffer) + size);
 
       if (m_header_size == 0)
       {
@@ -137,11 +137,6 @@ public:
           {
             m_content_size = std::stol(contentLength);
           }
-          /*if ((tmp3 = mystrnstr(GetHeader("Range").c_str(), "bytes=", iRequestBuffer.size())))
-          {
-            tmp3 += 6;
-            iRequestedRange = atol(tmp3);
-          }*/
         }
 
         if (m_content_size == dataSize - 4)
@@ -160,25 +155,25 @@ public:
     }
   }
 
-  std::string get_header(const std::string& aName)
+  std::string get_header(const std::string& name)
   {
     std::string value;
 
-    const auto it = m_headers.find(aName);
+    const auto it = m_headers.find(name);
     if (it != m_headers.end())
     {
       value = it->second;
     }
     else
     {
-      std::string header = aName + ": ";
+      std::string header = name + ": ";
       std::string new_line("\r\n");
       auto        it_begin = find_string_ic(m_http_head, header);
       if (it_begin != m_http_head.end())
       {
         auto it_end      = std::search(it_begin, m_http_head.end(), new_line.begin(), new_line.end());
         value            = std::string(it_begin + header.length(), it_end);
-        m_headers[aName] = value;
+        m_headers[name] = value;
       }
     }
 
@@ -197,32 +192,6 @@ public:
 
     return value;
   }
-
-  /*char* getquerystring(struct web_client* current_web_client)
-  {
-    char * tmp1, *tmp2, *ret;
-    char*  defret = "";
-    size_t size;
-
-    tmp1 = strstr(current_web_client->rbuf, "?");
-    tmp2 = strstr(current_web_client->rbuf, "HTTP");
-    if (tmp1 != nullptr && tmp1 < tmp2)
-      tmp1 += 1;
-    else
-      return defret;
-    size = (tmp2 - tmp1) - 1;
-    ret  = add_buffer(current_web_client->mem, size + 1);
-    if (ret == nullptr)
-    {
-      return defret;
-    }
-    memcpy(ret, tmp1, size);
-    ret[size] = 0;
-
-    current_web_client->QueryString = ret;
-
-    return ret;
-  }*/
 
   std::string get_request_resource()
   {
@@ -282,15 +251,6 @@ public:
 
   void process_client()
   {
-    /*if (true)
-    {
-      web_client_writef("HTTP/1.1 400 Invalid request\r\n");
-      web_client_writef("Date: %s\r\n", "aaa");
-      web_client_writef("Server: %s\r\n", servidor);
-      web_client_writef(invalid_request, servidor);
-      return;
-    }*/
-
     auto it = m_handlers_map->find(get_request_resource());
     if (it != m_handlers_map->end())
     {
@@ -306,62 +266,6 @@ public:
       web_client_writef("Server: %s\r\n", "aaaa");
       web_client_writef(not_found, server);
     }
-
-    /*
-    while (gettemp->next != nullptr && tmp == 0)
-    {
-      gettemp = gettemp->next;
-      snprintf(matchbuf, MATCHMAX, "%s", gettemp->str);
-
-      if (strlen(tmp1) > MAXURLSIZE)
-      {
-        web_client_writef(node, "HTTP/1.1 414 URL too large\r\n");
-        web_client_writef(node, "Date: %s\r\n", "aaa");
-        web_client_writef(node, "Server: %s\r\n", servidor);
-        web_client_writef(node, url_too_large, servidor);
-        node->stat = 5;
-        if (!node->sbufsize)
-          delete_client(node);
-        free(tmp1);
-        return;
-      }
-
-      if (!strcmp(matchbuf, tmp1))
-      {
-        if ((gettemp->flag & WS_LOCAL) == WS_LOCAL)
-        {
-          if (node->sa.sin_addr.s_addr != 0x0100007F)
-          {
-            web_client_writef(node, "HTTP/1.1 403 Forbidden\r\n");
-            web_client_writef(node, "Date: %s\r\n", "aaaa");
-            web_client_writef(node, "Server: %s\r\n", "aaaa");
-            web_client_writef(node, forbidden, servidor);
-            node->stat = 5;
-            if (!node->sbufsize)
-              delete_client(node);
-            free(tmp1);
-            return;
-          }
-        }
-        node->gh = gettemp;
-        tmp      = 1;
-      }
-    }
-
-    free(tmp1);
-    if (!tmp)
-    {
-      web_client_writef(node, "HTTP/1.1 404 Not Found\r\n");
-      web_client_writef(node, "Server: %s\r\n", "aaaa");
-      web_client_writef(node, not_found, servidor);
-      node->stat = 5;
-      if (!node->sbufsize)
-        delete_client(node);
-    }
-    else
-    {
-      send_http_reply(node, gettemp->func1(node));
-    }*/
   }
 
   void send_http_reply()
@@ -384,8 +288,6 @@ public:
     {
       web_client_writef("HTTP/1.1 416 Requested Range Not Satisfiable\r\n");
       web_client_writef("Server: %s\r\n", server);
-      // web_client_writef(node,"Date: %s\r\n",__ILWS_date(mktime(gmtime(&secs)),"%a, %d %b %Y %H:%M:%S GMT"));
-      // web_client_writef(node, "Content-range: bytes %d\r\n", node->writelength - node->wheaderSize);
       web_client_writef(range_msg, server);
     }
 
@@ -399,19 +301,11 @@ public:
     }
 
     web_client_writef("Server: %s\r\n", server);
-    // web_client_writef(node,"Date: %s\r\n",__ILWS_date(mktime(gmtime(&secs)),"%a, %d %b %Y %H:%M:%S GMT")); // Date
-    // header
+
     web_client_writef("Accept-Ranges: bytes\r\n");
     if (((writeLength - wheaderSize) - m_requested_range) > 0)
       web_client_writef("Content-length: %zu\r\n", (writeLength - wheaderSize) - m_requested_range);
 
-    /*if (node->range > 0)
-
-      web_client_writef(node,
-                        "Content-range: bytes %d-%d/%d\r\n",
-                        node->range,
-                        (node->writelength - node->wheadersize) - 1,
-                        node->writelength - node->wheadersize);*/
     m_output_buffer.insert(std::end(m_output_buffer), std::begin(m_response_buffer), std::end(m_response_buffer));
     client_send();
     m_can_close = true;
@@ -448,9 +342,9 @@ public:
     }
   }
 
-  void write_client(const boost::system::error_code& aError, size_t aSize)
+  void write_client(const boost::system::error_code& error, size_t size)
   {
-    m_write_buffer.erase(m_write_buffer.begin(), m_write_buffer.begin() + aSize);
+    m_write_buffer.erase(m_write_buffer.begin(), m_write_buffer.begin() + size);
 
     if (!m_write_buffer.empty())
     {
