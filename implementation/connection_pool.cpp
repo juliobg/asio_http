@@ -8,6 +8,10 @@
 
 #include "asio_http/internal/http_client_connection.h"
 
+#include "loguru.hpp"
+
+#include <cinttypes>
+
 namespace asio_http
 {
 namespace internal
@@ -20,6 +24,7 @@ connection_pool::get_connection(const std::pair<std::string, std::uint16_t>& hos
   if (m_connection_pool[host].empty())
   {
     handle = std::make_shared<http_client_connection>(m_strand, host);
+    m_allocations++;
   }
   else
   {
@@ -44,6 +49,11 @@ void connection_pool::release_connection(std::shared_ptr<http_client_connection>
   {
     m_connection_pool[host].push(handle);
   }
+}
+
+connection_pool::~connection_pool()
+{
+  DLOG_F(INFO, "Destroyed connection pool after allocations: %" PRIu64, m_allocations);
 }
 }  // namespace internal
 }  // namespace asio_http

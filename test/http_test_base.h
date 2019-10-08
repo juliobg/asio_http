@@ -31,12 +31,13 @@ const std::size_t GET_RESOURCE_HEADER_SIZE_EXPECTED = 81;
 const std::string TIMEOUT_RESOURCE                  = "/timeout";
 const std::string ECHO_RESOURCE                     = "/echo";
 const std::string POST_RESOURCE                     = "/post";
+const std::string CONNECTION_CLOSE_RESOURCE         = "/close";
 
 const std::string HTTP_CANCELLATION_TOKEN = "asio_httpTest";
 
 const std::uint32_t HTTP_CLIENT_POOL_SIZE = 25;
 
-std::string get_url(const std::string resource)
+std::string get_url(const std::string& resource)
 {
   return HOST + resource;
 }
@@ -45,6 +46,13 @@ const std::function<void(std::shared_ptr<test_server::web_client>)> get_handler 
   [](std::shared_ptr<test_server::web_client> client_data) {
     client_data->response_printf("Content-type: text/plain\r\n\r\n");
     client_data->response_printf(GET_RESPONSE.c_str());
+  };
+
+const std::function<void(std::shared_ptr<test_server::web_client>)> connection_close_handler =
+  [](std::shared_ptr<test_server::web_client> client_data) {
+    client_data->response_printf("Content-type: text/plain\r\n\r\n");
+    client_data->response_printf(GET_RESPONSE.c_str());
+    client_data->m_close_connection = true;
   };
 
 class timeout_callable
@@ -108,12 +116,13 @@ class http_test_base : public ::testing::Test
 {
 protected:
   http_test_base()
-      : m_http_client(new http_client(http_client_settings{ HTTP_CLIENT_POOL_SIZE }, m_client_io_context))
-      , m_client_thread([&]() { auto work = boost::asio::make_work_guard(m_client_io_context.get_executor()); m_client_io_context.run(); })
-      , m_web_server(m_client_io_context,
+      : m_http_client(new http_client(http_client_settings{ HTTP_CLIENT_POOL_SIZE }, m_test_io_context))
+      , m_client_thread([&]() { auto work = boost::asio::make_work_guard(m_test_io_context.get_executor()); m_test_io_context.run(); })
+      , m_web_server(m_test_io_context,
                      "127.0.0.1",
                      10123,
                      { { GET_RESOURCE, get_handler },
+                       { CONNECTION_CLOSE_RESOURCE, connection_close_handler },
                        { TIMEOUT_RESOURCE, timeout_callable() },
                        { ECHO_RESOURCE, echo_handler },
                        { POST_RESOURCE,
@@ -125,12 +134,12 @@ protected:
 
   virtual ~http_test_base()
   {
-    m_client_io_context.stop();
+    m_test_io_context.stop();
     m_client_thread.join();
   }
 
   // iocontext used to run the client
-  boost::asio::io_context m_client_io_context;
+  boost::asio::io_context      m_test_io_context;
   boost::asio::io_context      m_io_context;
   std::unique_ptr<http_client> m_http_client;
 

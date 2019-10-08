@@ -156,13 +156,33 @@ TEST_F(http_test, handle_pool)
 
 TEST_F(http_test, parallel_get_requests)
 {
-  const std::size_t number_of_requests = 30;
+  const std::size_t number_of_requests = 1000;
 
   std::vector<std::future<http_request_result>> futures;
 
   for (std::size_t i = 0; i < number_of_requests; ++i)
   {
     futures.push_back(m_http_client->get(use_std_future, get_url(GET_RESOURCE)));
+  }
+
+  for (auto& future : futures)
+  {
+    http_request_result reply = future.get();
+    EXPECT_FALSE(reply.error);
+    EXPECT_EQ(200, reply.http_response_code);
+    EXPECT_EQ(GET_RESPONSE, reply.get_body_as_string());
+  }
+}
+
+TEST_F(http_test, parallel_get_requests_connection_close)
+{
+  const std::size_t number_of_requests = 1000;
+
+  std::vector<std::future<http_request_result>> futures;
+
+  for (std::size_t i = 0; i < number_of_requests; ++i)
+  {
+    futures.push_back(m_http_client->get(use_std_future, get_url(CONNECTION_CLOSE_RESOURCE)));
   }
 
   for (auto& future : futures)

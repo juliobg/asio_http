@@ -8,6 +8,7 @@
 #define ASIO_HTTP_CONNECTION_POOL_H
 
 #include <boost/asio.hpp>
+
 #include <map>
 #include <memory>
 #include <stack>
@@ -23,8 +24,10 @@ class connection_pool
 public:
   connection_pool(boost::asio::io_context::strand& strand)
       : m_strand(strand)
+      , m_allocations(0)
   {
   }
+  ~connection_pool();
   std::shared_ptr<http_client_connection> get_connection(const std::pair<std::string, std::uint16_t>& host);
   void release_connection(std::shared_ptr<http_client_connection> handle, bool clean_up);
 
@@ -32,6 +35,7 @@ private:
   boost::asio::io_context::strand m_strand;
   std::map<std::pair<std::string, std::uint16_t>, std::stack<std::shared_ptr<http_client_connection>>>
     m_connection_pool;
+  uint64_t m_allocations;
 };
 }  // namespace internal
 }  // namespace asio_http

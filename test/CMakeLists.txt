@@ -23,7 +23,6 @@ set(IMPLEMENTATION_HEADERS
   http_test_base.h
 )
 
-include_directories(${GTEST_INCLUDE_DIRS})
 add_executable(${PROJECT_NAME} ${IMPLEMENTATION_SOURCES} ${IMPLEMENTATION_HEADERS})
 add_test(${PROJECT_NAME} ${PROJECT_NAME})
 

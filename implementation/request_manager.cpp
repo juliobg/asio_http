@@ -40,7 +40,7 @@ void request_manager::execute_request(const request_data& request)
 {
   m_requests.insert(request);
   execute_waiting_requests();
-  DLOG_F(INFO, "New request added");
+  //DLOG_F(INFO, "New request added");
 }
 
 void request_manager::cancel_requests(const std::string& cancellation_token)

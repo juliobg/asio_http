@@ -161,6 +161,7 @@ struct http_client_connection
       m_timer.cancel();
       m_completed_request_callback(shared_from_this(), ec);
     }
+    m_completed_request_callback = 0;
   }
 
   bool is_valid_connection() { return m_socket->is_open(); }

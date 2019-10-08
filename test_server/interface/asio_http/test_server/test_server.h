@@ -86,6 +86,7 @@ public:
       , m_requested_range(0)
       , m_handlers_map(handlers_map)
       , m_can_close(false)
+      , m_close_connection(false)
   {
   }
   std::vector<char>                                                                        m_read_buffer;
@@ -101,6 +102,7 @@ public:
   std::map<std::string, std::string>                                                       m_headers;
   std::shared_ptr<std::map<std::string, std::function<void(std::shared_ptr<web_client>)>>> m_handlers_map;
   bool m_can_close;
+  bool m_close_connection;
 
   void start_reading()
   {
@@ -263,7 +265,7 @@ public:
     else
     {
       web_client_writef("HTTP/1.1 404 Not Found\r\n");
-      web_client_writef("Server: %s\r\n", "aaaa");
+      web_client_writef("Server: %s\r\n", "Test server");
       web_client_writef(not_found, server);
     }
   }
@@ -338,7 +340,22 @@ public:
     }
     else if (m_can_close)
     {
-        m_socket.close();
+        m_can_close = false;
+        m_response_buffer.clear();
+        m_output_buffer.clear();
+        m_write_buffer.clear();
+        m_request_buffer.clear();
+        m_http_head.clear();
+        m_header_size = 0;
+        m_content_size = 0;
+        m_requested_range = 0;
+        if (m_close_connection) {
+          m_socket.close();
+          m_close_connection = false;
+        }
+        else {
+            start_reading();
+        }
     }
   }
 
