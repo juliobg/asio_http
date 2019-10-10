@@ -124,25 +124,21 @@ private:
       call_on_connected(ec);
       return;
     }
-    boost::asio::ip::tcp::endpoint ep = *it;
+    boost::asio::ip::tcp::endpoint ep = *it++;
 
     m_socket.async_connect(ep, [ptr = this->shared_from_this(), it](auto&& ec) { ptr->connect_handler(ec, it); });
   }
 
   void connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator it)
   {
-    if (!ec)
+    if (!ec || it == boost::asio::ip::tcp::resolver::iterator())
     {
       call_on_connected(ec);
-    }
-    else if (it != boost::asio::ip::tcp::resolver::iterator())
-    {
-      boost::asio::ip::tcp::endpoint ep = *it;
-      m_socket.async_connect(ep, [ptr = this->shared_from_this(), it](auto&& ec) { ptr->connect_handler(ec, it); });
     }
     else
     {
-      call_on_connected(ec);
+      boost::asio::ip::tcp::endpoint ep = *it++;
+      m_socket.async_connect(ep, [ptr = this->shared_from_this(), it](auto&& ec) { ptr->connect_handler(ec, it); });
     }
   }
 
@@ -237,7 +233,7 @@ private:
       call_on_connected(ec);
       return;
     }
-    boost::asio::ip::tcp::endpoint ep = *it;
+    boost::asio::ip::tcp::endpoint ep = *it++;
 
     m_socket.lowest_layer().async_connect(
       ep, [ptr = this->shared_from_this(), it](auto&& ec) { ptr->connect_handler(ec, it); });
@@ -252,7 +248,7 @@ private:
     }
     else if (it != boost::asio::ip::tcp::resolver::iterator())
     {
-      boost::asio::ip::tcp::endpoint ep = *it;
+      boost::asio::ip::tcp::endpoint ep = *it++;
       m_socket.lowest_layer().async_connect(
         ep, [ptr = this->shared_from_this(), it](auto&& ec) { ptr->connect_handler(ec, it); });
     }
