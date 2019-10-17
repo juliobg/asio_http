@@ -10,7 +10,6 @@ project(asio_http.test)
 set(IMPLEMENTATION_SOURCES
   coro_test.cpp
   http_test.cpp
-  http_request_test.cpp
   io_context_test.cpp
   url_test.cpp
 )

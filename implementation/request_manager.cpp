@@ -102,9 +102,13 @@ void request_manager::on_request_completed(request_buffers&&                    
   if (it != m_requests.get<index_connection>().end())
   {
     const auto error_handling = process_errors(ec, request_buffers);
-    if (error_handling.first && it->m_retries == 0)
+    if (error_handling.first && it->m_retries < m_settings.max_attempts)
     {
-      index.modify(it, [](request_data& request) {
+      index.modify(it, [newrequest = std::move(error_handling.second)](request_data& request) {
+        if (newrequest)
+        {
+          request.m_http_request = newrequest;
+        }
         request.m_connection.reset();
         request.m_request_state = request_state::waiting_retry;
         request.m_retries++;

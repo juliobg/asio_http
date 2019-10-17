@@ -38,7 +38,7 @@ TEST_F(http_test, get_request)
   EXPECT_EQ(GET_RESPONSE, reply.get_body_as_string());
   EXPECT_EQ(GET_RESOURCE_HEADER_SIZE_EXPECTED,
             std::accumulate(reply.headers.begin(), reply.headers.end(), 0, [](const auto& a1, const auto& a2) {
-              return a1 + a2.size();
+              return a1 + a2.first.size() + a2.second.size();
             }));
 }
 
@@ -46,7 +46,6 @@ TEST_F(http_test, head_request)
 {
   auto request = std::make_shared<http_request>(http_request_interface::http_method::HEAD,
                                                 url(get_url(GET_RESOURCE)),
-                                                std::string(),
                                                 120000,
                                                 ssl_settings(),
                                                 std::vector<std::string>(),
@@ -60,7 +59,7 @@ TEST_F(http_test, head_request)
   EXPECT_EQ(0, reply.content_body.size());
   EXPECT_EQ(GET_RESOURCE_HEADER_SIZE_EXPECTED,
             std::accumulate(reply.headers.begin(), reply.headers.end(), 0, [](const auto& a1, const auto& a2) {
-              return a1 + a2.size();
+              return a1 + a2.first.size() + a2.second.size();
             }));
 }
 
@@ -83,7 +82,6 @@ TEST_F(http_test, request_destroyed)
 {
   auto request = std::make_shared<http_request>(http_request_interface::http_method::GET,
                                                 url(get_url(GET_RESOURCE)),
-                                                std::string(),
                                                 120000,
                                                 ssl_settings(),
                                                 std::vector<std::string>(),
@@ -106,7 +104,6 @@ TEST_F(http_test, timeout)
   // Request with 1 second timeout
   const auto request = std::make_shared<http_request>(http_request_interface::http_method::GET,
                                                       url(get_url(TIMEOUT_RESOURCE)),
-                                                      std::string(),
                                                       1000,
                                                       ssl_settings(),
                                                       std::vector<std::string>(),

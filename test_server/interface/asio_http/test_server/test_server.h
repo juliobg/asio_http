@@ -101,8 +101,8 @@ public:
   std::size_t                                                                              m_requested_range;
   std::map<std::string, std::string>                                                       m_headers;
   std::shared_ptr<std::map<std::string, std::function<void(std::shared_ptr<web_client>)>>> m_handlers_map;
-  bool m_can_close;
-  bool m_close_connection;
+  bool                                                                                     m_can_close;
+  bool                                                                                     m_close_connection;
 
   void start_reading()
   {
@@ -173,8 +173,8 @@ public:
       auto        it_begin = find_string_ic(m_http_head, header);
       if (it_begin != m_http_head.end())
       {
-        auto it_end      = std::search(it_begin, m_http_head.end(), new_line.begin(), new_line.end());
-        value            = std::string(it_begin + header.length(), it_end);
+        auto it_end     = std::search(it_begin, m_http_head.end(), new_line.begin(), new_line.end());
+        value           = std::string(it_begin + header.length(), it_end);
         m_headers[name] = value;
       }
     }
@@ -340,22 +340,24 @@ public:
     }
     else if (m_can_close)
     {
-        m_can_close = false;
-        m_response_buffer.clear();
-        m_output_buffer.clear();
-        m_write_buffer.clear();
-        m_request_buffer.clear();
-        m_http_head.clear();
-        m_header_size = 0;
-        m_content_size = 0;
-        m_requested_range = 0;
-        if (m_close_connection) {
-          m_socket.close();
-          m_close_connection = false;
-        }
-        else {
-            start_reading();
-        }
+      m_can_close = false;
+      m_response_buffer.clear();
+      m_output_buffer.clear();
+      m_write_buffer.clear();
+      m_request_buffer.clear();
+      m_http_head.clear();
+      m_header_size     = 0;
+      m_content_size    = 0;
+      m_requested_range = 0;
+      if (m_close_connection)
+      {
+        m_socket.close();
+        m_close_connection = false;
+      }
+      else
+      {
+        start_reading();
+      }
     }
   }
 
@@ -404,8 +406,6 @@ private:
   }
   void handle_accept(const boost::system::error_code& error_code, boost::asio::ip::tcp::socket socket)
   {
-    //if (error_code)
-    //    throw error_code;
     const auto newClient = std::make_shared<web_client>(std::move(socket), m_handlers_map);
     newClient->start_reading();
     start_accept();

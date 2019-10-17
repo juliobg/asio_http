@@ -27,7 +27,7 @@ namespace
 const std::string HOST                              = "http://127.0.0.1:10123";
 const std::string GET_RESOURCE                      = "/anything";
 const std::string GET_RESPONSE                      = "This is the response";
-const std::size_t GET_RESOURCE_HEADER_SIZE_EXPECTED = 81;
+const std::size_t GET_RESOURCE_HEADER_SIZE_EXPECTED = 73;
 const std::string TIMEOUT_RESOURCE                  = "/timeout";
 const std::string ECHO_RESOURCE                     = "/echo";
 const std::string POST_RESOURCE                     = "/post";
@@ -116,8 +116,11 @@ class http_test_base : public ::testing::Test
 {
 protected:
   http_test_base()
-      : m_http_client(new http_client(http_client_settings{ HTTP_CLIENT_POOL_SIZE }, m_test_io_context))
-      , m_client_thread([&]() { auto work = boost::asio::make_work_guard(m_test_io_context.get_executor()); m_test_io_context.run(); })
+      : m_http_client(new http_client(http_client_settings{ HTTP_CLIENT_POOL_SIZE, 5 }, m_test_io_context))
+      , m_client_thread([&]() {
+        auto work = boost::asio::make_work_guard(m_test_io_context.get_executor());
+        m_test_io_context.run();
+      })
       , m_web_server(m_test_io_context,
                      "127.0.0.1",
                      10123,
@@ -125,10 +128,9 @@ protected:
                        { CONNECTION_CLOSE_RESOURCE, connection_close_handler },
                        { TIMEOUT_RESOURCE, timeout_callable() },
                        { ECHO_RESOURCE, echo_handler },
-                       { POST_RESOURCE,
-                         [&](std::shared_ptr<test_server::web_client> client_data) {
-                           m_post_data_queue.add_request_post_data(client_data);
-                         } } })
+                       { POST_RESOURCE, [&](std::shared_ptr<test_server::web_client> client_data) {
+                          m_post_data_queue.add_request_post_data(client_data);
+                        } } })
   {
   }
 
@@ -145,7 +147,7 @@ protected:
 
   std::thread m_client_thread;
 
-  post_data_queue m_post_data_queue;
+  post_data_queue         m_post_data_queue;
   test_server::web_server m_web_server;
 };
 }  // namespace test

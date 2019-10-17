@@ -22,7 +22,6 @@ public:
 
   http_request(http_method               http_method,
                url                       url,
-               std::string               proxy,
                std::uint32_t             timeout_msec,
                ssl_settings              certificates,
                std::vector<std::string>  http_headers,
@@ -31,7 +30,6 @@ public:
 
   virtual http_method              get_http_method() const override { return m_http_method; }
   virtual url                      get_url() const override { return m_url; }
-  virtual std::string              get_proxy_address() const override { return m_proxy; }
   virtual uint32_t                 get_timeout_msec() const override { return m_timeout_msec; }
   virtual std::vector<std::string> get_http_headers() const override { return m_http_headers; }
   virtual std::vector<uint8_t>     get_post_data() const override { return m_post_data; }
@@ -40,35 +38,11 @@ public:
 
   const http_method               m_http_method;
   const url                       m_url;
-  const std::string               m_proxy;
   const std::uint32_t             m_timeout_msec;
   const ssl_settings              m_certificates;
   const std::vector<std::string>  m_http_headers;
   const std::vector<std::uint8_t> m_post_data;
   const compression_policy        m_compression_policy;
-};
-
-class http_request_builder
-{
-public:
-  http_request_builder(std::string url, http_request_interface::http_method http_method)
-      : http_method(http_method)
-      , request_url(url)
-      , timeout_msec(http_request::DEFAULT_TIMEOUT_MSEC)
-      , compress_data(http_request_interface::compression_policy::never)
-  {
-  }
-
-  std::shared_ptr<http_request_interface> create_request() const;
-
-  http_request_interface::http_method        http_method;
-  url                                        request_url;
-  std::string                                proxy;
-  uint32_t                                   timeout_msec;
-  std::vector<std::string>                   http_headers;
-  std::vector<std::uint8_t>                  post_data;
-  ssl_settings                               certificates;
-  http_request_interface::compression_policy compress_data;
 };
 }  // namespace asio_http
 

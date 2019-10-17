@@ -15,13 +15,16 @@ struct http_client_settings
 {
   http_client_settings()
       : max_parallel_requests(25)
+      , max_attempts(5)
   {
   }
-  http_client_settings(std::uint32_t max_parallel_requests_)
+  http_client_settings(std::uint32_t max_parallel_requests_, std::uint32_t max_attempts_)
       : max_parallel_requests(max_parallel_requests_)
+      , max_attempts(max_attempts_)
   {
   }
   const std::uint32_t max_parallel_requests;
+  const std::uint32_t max_attempts;
 };
 }  // namespace asio_http
 #endif

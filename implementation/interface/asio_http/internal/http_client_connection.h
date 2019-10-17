@@ -56,20 +56,19 @@ struct request_buffers
       , m_state(connection_state::in_progress)
   {
   }
-  std::shared_ptr<const http_request_interface> m_request;
-  std::vector<std::string>                      m_headers;
-  std::pair<std::string, std::string>           m_current_header;
-  data_sink                                     m_data_sink;
-  data_source                                   m_data_source;
-  connection_state                              m_state;
-  unsigned int                                  m_status_code;
+  std::shared_ptr<const http_request_interface>    m_request;
+  std::vector<std::pair<std::string, std::string>> m_headers;
+  std::pair<std::string, std::string>              m_current_header;
+  data_sink                                        m_data_sink;
+  data_source                                      m_data_source;
+  connection_state                                 m_state;
+  unsigned int                                     m_status_code;
 
   void push_current_header()
   {
-    std::string header = m_current_header.first + ": " + m_current_header.second;
     // Trim trailing whitespaces
-    header.erase(header.find_last_not_of("\n\r\t ") + 1);
-    m_headers.push_back(header);
+    m_current_header.second.erase(m_current_header.second.find_last_not_of("\n\r\t ") + 1);
+    m_headers.push_back(std::move(m_current_header));
     m_current_header.first.clear();
     m_current_header.second.clear();
   }

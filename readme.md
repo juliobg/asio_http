@@ -137,7 +137,6 @@ Request result
 These are the data members of the `http_request_result` struct:
 
 ```c++
-std::shared_ptr<const http_request_interface> request;
 uint32_t                                      http_response_code;
 std::vector<std::string>                      headers;
 std::vector<uint8_t>                          content_body;
@@ -146,7 +145,6 @@ http_request_stats                            stats;
 ```
 
 They include:
-* A shared pointer to the original request
 * The HTTP response code
 * All the headers as returned by the server
 * The body of the response

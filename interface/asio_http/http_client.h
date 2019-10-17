@@ -49,7 +49,6 @@ public:
   {
     const auto request = std::make_shared<http_request>(http_request_interface::http_method::GET,
                                                         url(url_string),
-                                                        std::string(),
                                                         http_request::DEFAULT_TIMEOUT_MSEC,
                                                         ssl_settings(),
                                                         std::vector<std::string>(),
@@ -74,7 +73,6 @@ public:
   {
     const auto request = std::make_shared<http_request>(http_request_interface::http_method::POST,
                                                         url(url_string),
-                                                        std::string(),
                                                         http_request::DEFAULT_TIMEOUT_MSEC,
                                                         ssl_settings(),
                                                         std::vector<std::string>{ "Content-Type: " + content_type },

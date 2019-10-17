@@ -65,9 +65,6 @@ public:
   // Get the url for this request
   virtual url get_url() const = 0;
 
-  // Get the proxy to be used or empty
-  virtual std::string get_proxy_address() const = 0;
-
   // Get SSL settings for this request
   virtual ssl_settings get_ssl_settings() const = 0;
 
