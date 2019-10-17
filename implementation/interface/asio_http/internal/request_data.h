@@ -23,8 +23,9 @@ class http_client_connection;
 // of the index_state index
 enum class request_state
 {
-  waiting     = 0,  // Waiting in the requests queue
-  in_progress = 1   // Request being executed
+  waiting_retry = 0,  // Waiting to retry after error or redirection
+  waiting       = 1,  // Waiting in the requests queue
+  in_progress   = 2   // Request being executed
 };
 
 using completion_handler = std::function<void(http_request_result)>;

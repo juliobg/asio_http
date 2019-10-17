@@ -54,8 +54,7 @@ void log_data(const std::string& url, const char* msg, size_t size, const std::s
 #endif
 }  // namespace
 
-http_request_stats get_request_stats(http_client_connection*               connection,
-                                     std::chrono::steady_clock::time_point creation_time)
+http_request_stats get_request_stats(std::chrono::steady_clock::time_point creation_time)
 {
   http_request_stats stats_ret = {};
 
@@ -64,10 +63,9 @@ http_request_stats get_request_stats(http_client_connection*               conne
   return stats_ret;
 }
 
-void http_request_stats_logging(const http_request_result& result)
+void http_request_stats_logging(const http_request_result& result, const std::string& name)
 {
-  const std::string& url = result.request->get_url().to_string();
-  DLOG_F(INFO, "Request to %s completed, result: %s", url.c_str(), result.error.message().c_str());
+  DLOG_F(INFO, "Request to %s completed, result: %s", name.c_str(), result.error.message().c_str());
   DLOG_F(INFO, "  Downloaded bytes: %" PRId64, result.stats.downloaded_bytes);
   DLOG_F(INFO, "  Uploaded bytes: %" PRId64, result.stats.uploaded_bytes);
   DLOG_F(INFO, "  Name lookup time: %.5f s", result.stats.name_lookup_time_s.count());

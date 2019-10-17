@@ -55,6 +55,7 @@ set(IMPLEMENTATION_SOURCES
   implementation/data_sink.cpp
   implementation/data_source.cpp
   implementation/http_client.cpp
+  implementation/http_error_handling.cpp
   implementation/request_manager.cpp
   implementation/logging_functions.cpp
   implementation/compression.cpp
@@ -65,6 +66,7 @@ set(IMPLEMENTATION_SOURCES
 set(IMPLEMENTATION_HEADERS
   implementation/interface/asio_http/internal/completion_handler_invoker.h
   implementation/interface/asio_http/internal/http_client_connection.h
+  implementation/interface/asio_http/internal/http_error_handling.h
   implementation/interface/asio_http/internal/connection_pool.h
   implementation/interface/asio_http/internal/data_sink.h
   implementation/interface/asio_http/internal/data_source.h

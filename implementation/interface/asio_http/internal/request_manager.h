@@ -29,6 +29,7 @@ class http_request_result;
 namespace internal
 {
 struct request_data;
+struct request_buffers;
 
 class request_manager : public std::enable_shared_from_this<request_manager>
 {
@@ -41,9 +42,6 @@ public:
 
 private:
   struct index_connection
-  {
-  };
-  struct index_request
   {
   };
   struct index_state
@@ -66,22 +64,18 @@ private:
       boost::multi_index::ordered_non_unique<
         boost::multi_index::tag<index_connection>,
         boost::multi_index::member<request_data, std::shared_ptr<http_client_connection>, &request_data::m_connection>>,
-      boost::multi_index::ordered_non_unique<boost::multi_index::tag<index_request>,
-                                             boost::multi_index::member<request_data,
-                                                                        std::shared_ptr<const http_request_interface>,
-                                                                        &request_data::m_http_request>>,
       boost::multi_index::ordered_non_unique<
         boost::multi_index::tag<index_cancellation>,
         boost::multi_index::member<request_data, std::string, &request_data::m_cancellation_token>>>>;
 
   void execute_waiting_requests();
-  void on_request_completed(std::shared_ptr<http_client_connection> handle, boost::system::error_code ec);
+  void on_request_completed(request_buffers&&                       request_buffers,
+                            std::shared_ptr<http_client_connection> handle,
+                            boost::system::error_code               ec);
   template<typename Iterator, typename Index>
-  void handle_completed_request(Index& index, const Iterator& iterator, std::error_code ec);
+  void handle_completed_request(Index& index, const Iterator& iterator, http_request_result&& result);
   template<typename Iterator, typename Index>
   void cancel_request(Index& index, const Iterator& it);
-  void create_request_result(const request_data& request, std::error_code ec);
-  void release_http_client_connection_handle(const request_data& request, std::error_code ec);
 
   const http_client_settings      m_settings;
   boost::asio::io_context::strand m_strand;

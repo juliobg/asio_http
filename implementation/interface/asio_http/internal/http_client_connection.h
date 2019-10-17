@@ -21,6 +21,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -61,6 +62,7 @@ struct request_buffers
   data_sink                                     m_data_sink;
   data_source                                   m_data_source;
   connection_state                              m_state;
+  unsigned int                                  m_status_code;
 
   void push_current_header()
   {
@@ -101,8 +103,9 @@ struct http_client_connection
 {
   http_client_connection(boost::asio::io_context::strand& strand, std::pair<std::string, std::uint16_t> host);
   ~http_client_connection() { m_socket->set_upper(nullptr); }
-  void         start(std::shared_ptr<const http_request_interface>                                           request,
-                     std::function<void(std::shared_ptr<http_client_connection>, boost::system::error_code)> callback);
+  void         start(std::shared_ptr<const http_request_interface> request,
+                     std::function<void(request_buffers&&, std::shared_ptr<http_client_connection>, boost::system::error_code)>
+                       callback);
   virtual void on_connected(const boost::system::error_code& ec) override;
   virtual void on_write(const boost::system::error_code& ec) override;
   virtual void on_read(const std::uint8_t* data, std::size_t size, boost::system::error_code ec) override;
@@ -120,10 +123,11 @@ struct http_client_connection
   void         send_headers();
   boost::asio::io_context::strand& m_strand;
 
-  http_parser_settings                                                                    m_settings;
-  http_parser                                                                             m_parser;
-  std::function<void(std::shared_ptr<http_client_connection>, boost::system::error_code)> m_completed_request_callback;
-  std::pair<std::string, std::uint16_t>                                                   m_host_port;
+  http_parser_settings m_settings;
+  http_parser          m_parser;
+  std::function<void(request_buffers&&, std::shared_ptr<http_client_connection>, boost::system::error_code)>
+                                        m_completed_request_callback;
+  std::pair<std::string, std::uint16_t> m_host_port;
 
   std::unique_ptr<request_buffers> m_current_request;
   std::shared_ptr<transport_layer> m_socket;
@@ -131,20 +135,7 @@ struct http_client_connection
   boost::asio::deadline_timer m_timer;
   bool                        m_not_reusable;
 
-  unsigned int get_response_code() const
-  {
-    assert(m_parser.type == HTTP_RESPONSE);
-    return m_parser.status_code;
-  }
-
   std::pair<std::string, std::uint16_t> get_host_and_port() const { return m_host_port; }
-
-  std::vector<std::uint8_t> get_data() const
-  {
-    return m_current_request ? m_current_request->m_data_sink.get_data() : std::vector<std::uint8_t>();
-  }
-
-  std::vector<std::string> get_reply_headers() const { return m_current_request->m_headers; }
 
   void cancel() { complete_request(boost::asio::error::operation_aborted); }
 
@@ -159,9 +150,10 @@ struct http_client_connection
     {
       m_current_request->m_state = connection_state::done;
       m_timer.cancel();
-      m_completed_request_callback(shared_from_this(), ec);
+      m_current_request->m_status_code = m_parser.status_code;
+      m_completed_request_callback(std::move(*m_current_request), shared_from_this(), ec);
     }
-    m_completed_request_callback = 0;
+    m_completed_request_callback = nullptr;
   }
 
   bool is_valid_connection() { return m_socket->is_open(); }
@@ -188,8 +180,8 @@ inline http_client_connection::http_client_connection(boost::asio::io_context::s
 }
 
 inline void http_client_connection::start(
-  std::shared_ptr<const http_request_interface>                                           request,
-  std::function<void(std::shared_ptr<http_client_connection>, boost::system::error_code)> callback)
+  std::shared_ptr<const http_request_interface>                                                              request,
+  std::function<void(request_buffers&&, std::shared_ptr<http_client_connection>, boost::system::error_code)> callback)
 {
   m_current_request.reset(new request_buffers(request));
   m_completed_request_callback = callback;
@@ -235,6 +227,7 @@ inline void http_client_connection::on_connected(const boost::system::error_code
   }
   else
   {
+    // throw ec;
     complete_request(ec);
   }
 }
@@ -274,7 +267,7 @@ inline void http_client_connection::on_read(const std::uint8_t* data, std::size_
   // If there is available data, try to parse response, and ignore errors
   if (size != 0 && m_current_request->m_state != connection_state::done)
   {
-    const char* d = reinterpret_cast<const char*>(data);
+    const char* d     = reinterpret_cast<const char*>(data);
     std::size_t nsize = http_parser_execute(&m_parser, &m_settings, d, size);
 
     if (nsize != size)
@@ -285,7 +278,7 @@ inline void http_client_connection::on_read(const std::uint8_t* data, std::size_
   // connection_state may have changed after call to http_parser_execute
   if (!ec && m_current_request->m_state != connection_state::done)
   {
-      m_socket->read();
+    m_socket->read();
   }
   else if (ec && m_current_request->m_state != connection_state::done)
   {
@@ -305,7 +298,7 @@ inline int http_client_connection::on_message_complete(http_parser* parser)
   http_client_connection* obj = static_cast<http_client_connection*>(parser->data);
   if (http_should_keep_alive(parser) == 0)
   {
-      obj->m_not_reusable = true;
+    obj->m_not_reusable = true;
   }
   obj->complete_request(boost::system::error_code());
 

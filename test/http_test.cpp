@@ -176,6 +176,7 @@ TEST_F(http_test, parallel_get_requests)
 
 TEST_F(http_test, parallel_get_requests_connection_close)
 {
+  // Test will probably fail if connections are not properly closed
   const std::size_t number_of_requests = 1000;
 
   std::vector<std::future<http_request_result>> futures;
@@ -189,6 +190,8 @@ TEST_F(http_test, parallel_get_requests_connection_close)
   {
     http_request_result reply = future.get();
     EXPECT_FALSE(reply.error);
+    if (reply.error)
+      EXPECT_EQ(reply.error.message(), "aaaaa");
     EXPECT_EQ(200, reply.http_response_code);
     EXPECT_EQ(GET_RESPONSE, reply.get_body_as_string());
   }

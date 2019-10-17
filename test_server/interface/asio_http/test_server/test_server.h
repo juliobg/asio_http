@@ -404,6 +404,8 @@ private:
   }
   void handle_accept(const boost::system::error_code& error_code, boost::asio::ip::tcp::socket socket)
   {
+    //if (error_code)
+    //    throw error_code;
     const auto newClient = std::make_shared<web_client>(std::move(socket), m_handlers_map);
     newClient->start_reading();
     start_accept();

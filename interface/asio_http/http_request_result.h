@@ -32,14 +32,12 @@ struct http_request_stats
 class http_request_result
 {
 public:
-  http_request_result(std::shared_ptr<const http_request_interface> request_,
-                      std::uint32_t                                 http_response_code_,
-                      std::vector<std::string>                      headers_,
-                      std::vector<std::uint8_t>                     content_,
-                      std::error_code                               error_,
-                      http_request_stats                            request_stats_)
-      : request(std::move(request_))
-      , http_response_code(http_response_code_)
+  http_request_result(std::uint32_t             http_response_code_,
+                      std::vector<std::string>  headers_,
+                      std::vector<std::uint8_t> content_,
+                      std::error_code           error_,
+                      http_request_stats        request_stats_)
+      : http_response_code(http_response_code_)
       , headers(std::move(headers_))
       , content_body(std::move(content_))
       , error(error_)
@@ -49,12 +47,11 @@ public:
   http_request_result() {}
 
   // Non const to allow move semantics
-  std::shared_ptr<const http_request_interface> request;
-  std::uint32_t                                 http_response_code;
-  std::vector<std::string>                      headers;
-  std::vector<std::uint8_t>                     content_body;
-  std::error_code                               error;
-  http_request_stats                            stats;
+  std::uint32_t             http_response_code;
+  std::vector<std::string>  headers;
+  std::vector<std::uint8_t> content_body;
+  std::error_code           error;
+  http_request_stats        stats;
 
   std::string get_body_as_string() const { return { content_body.begin(), content_body.end() }; }
 };
