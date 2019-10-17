@@ -94,9 +94,9 @@ An asynchronous function returns before it is finished, and generally causes som
 Currently three asynchronous interfaces have been tested:
 * Callback argument
 * Future placeholder
-* Awaitable placeholder (C++20 coroutines)
+* Awaitable placeholder
 
-For the callback argument see the examples above. Any type of callable is supported (e.g. std::function or C++11 lambda).
+For the callback argument see the examples above. Any type of completion handler (e.g. std::function or C++11 lambda) is supported, similarly to other Boost Asio asynchronous operations. Note that the HTTP client is executor aware. I.e., the HTTP client will submit completion handler to its bound executor.
 
 In the case of `std::future` placeholder, the special value `asio_http::use_std_future` (arternatively `boost::asio::use_future`) must be used to specify that an asynchronous operation should return a future.
 
@@ -112,18 +112,18 @@ See `coro_test.cpp` for an example on how to use the special value `asio_http::u
 Settings
 --------
 
-Right now the only available setting is the maximum size of the connection pool (i.e., maximum number of parallel requests). It may be configured as below when creating an instane of the http client:
+Right now the only available settings are the maximum size of the connection pool (i.e., maximum number of parallel requests) and maximum number of attempts to complete the HTTP request. It may be configured as below when creating an instance of the http client:
 
 
 ```c++
 boost::asio::io_context context;
 
-asio_http::http_client  client(http_client_settings{ 1 }, context);
+asio_http::http_client  client(http_client_settings{ 1, 2 }, context);
 ```
 
-which would mean than only one active reqeuest is allowed, and the others would be enqueued, and reuse the open connection when it is possible.
+which configures than only one active reqeuest is allowed, and the others would be enqueued, reusing the open connection when possible. The maximum number of attempts is set to 2.
 
-When no value is given, pool size of 25 is used by default:
+When no value is given, pool size of 25 connections and a maximum of 5 attempts are set by default:
 
 ```c++
 boost::asio::io_context context;
