@@ -23,7 +23,7 @@ connection_pool::get_connection(const std::pair<std::string, std::uint16_t>& hos
 
   if (m_connection_pool[host].empty())
   {
-    handle = std::make_shared<http_client_connection>(m_strand, host);
+    handle = std::make_shared<http_client_connection>(m_context, host);
     m_allocations++;
   }
   else

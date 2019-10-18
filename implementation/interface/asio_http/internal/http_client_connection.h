@@ -100,7 +100,7 @@ struct http_client_connection
     : transport_layer
     , std::enable_shared_from_this<http_client_connection>
 {
-  http_client_connection(boost::asio::io_context::strand& strand, std::pair<std::string, std::uint16_t> host);
+  http_client_connection(boost::asio::io_context& io_context, std::pair<std::string, std::uint16_t> host);
   ~http_client_connection() { m_socket->set_upper(nullptr); }
   void         start(std::shared_ptr<const http_request_interface> request,
                      std::function<void(request_buffers&&, std::shared_ptr<http_client_connection>, boost::system::error_code)>
@@ -120,7 +120,7 @@ struct http_client_connection
   static int   on_status(http_parser* parser, const char* at, size_t length);
   void         write_body();
   void         send_headers();
-  boost::asio::io_context::strand& m_strand;
+  boost::asio::io_context::strand m_strand;
 
   http_parser_settings m_settings;
   http_parser          m_parser;
@@ -136,7 +136,10 @@ struct http_client_connection
 
   std::pair<std::string, std::uint16_t> get_host_and_port() const { return m_host_port; }
 
-  void cancel() { complete_request(boost::asio::error::operation_aborted); }
+  void cancel()
+  {
+    m_strand.post([ptr = this->shared_from_this()]() { ptr->complete_request(boost::asio::error::operation_aborted); });
+  }
 
   void complete_request(boost::system::error_code ec)
   {
@@ -158,14 +161,14 @@ struct http_client_connection
   bool is_valid_connection() { return m_socket->is_open(); }
 };
 
-inline http_client_connection::http_client_connection(boost::asio::io_context::strand&      strand,
+inline http_client_connection::http_client_connection(boost::asio::io_context&              io_context,
                                                       std::pair<std::string, std::uint16_t> host)
     : transport_layer(nullptr)
-    , m_strand(strand)
+    , m_strand(io_context)
     , m_settings()
     , m_parser()
     , m_host_port(host)
-    , m_timer(strand.context())
+    , m_timer(io_context)
     , m_not_reusable(false)
 {
   http_parser_init(&m_parser, HTTP_RESPONSE);
@@ -200,16 +203,17 @@ inline void http_client_connection::start(
   }
   else if (request->get_url().protocol == "https")
   {
-    m_socket = ssl_socket::connect(this,
-                                   m_strand.context(),
-                                   request->get_url().host,
-                                   std::to_string(request->get_url().port),
-                                   request->get_ssl_settings());
+    m_socket = ssl_socket<boost::asio::io_context::strand>::connect(this,
+                                                                    m_strand,
+                                                                    m_strand.context(),
+                                                                    request->get_url().host,
+                                                                    std::to_string(request->get_url().port),
+                                                                    request->get_ssl_settings());
   }
   else
   {
-    m_socket =
-      tcp_socket::connect(this, m_strand.context(), request->get_url().host, std::to_string(request->get_url().port));
+    m_socket = tcp_socket<boost::asio::io_context::strand>::connect(
+      this, m_strand, m_strand.context(), request->get_url().host, std::to_string(request->get_url().port));
   }
 }
 
@@ -318,7 +322,7 @@ inline int http_client_connection::on_headers_complete(http_parser* parser)
   return 0;
 }
 
-inline int http_client_connection::on_status(http_parser* parser, const char* at, size_t length)
+inline int http_client_connection::on_status(http_parser*, const char*, size_t)
 {
   return 0;
 }

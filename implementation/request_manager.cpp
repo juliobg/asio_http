@@ -45,7 +45,7 @@ create_request_result(const request_data& request, request_buffers&& request_buf
 request_manager::request_manager(const http_client_settings& settings, boost::asio::io_context& io_context)
     : m_settings(settings)
     , m_strand(io_context)
-    , m_connection_pool(m_strand)
+    , m_connection_pool(io_context)
 {
 }
 
@@ -62,11 +62,11 @@ void request_manager::execute_request(const request_data& request)
 
 void request_manager::cancel_requests(const std::string& cancellation_token)
 {
-  request_list::index_iterator<index_cancellation>::type it;
-  auto&                                                  index = m_requests.get<index_cancellation>();
-  while ((it = cancellation_token.empty() ? index.begin() : index.find(cancellation_token)) != index.end())
+  auto& index = m_requests.get<index_cancellation>();
+  auto  it    = cancellation_token.empty() ? index.begin() : index.find(cancellation_token);
+  while (it != index.end())
   {
-    cancel_request(index, it);
+    cancel_request(index, it++);
   }
 }
 
@@ -139,9 +139,11 @@ void request_manager::execute_waiting_requests()
       request.m_connection    = handle;
       request.m_request_state = request_state::in_progress;
     });
-    handle->start(request, [ptr = this->shared_from_this()](auto&& request_data, auto&& handle, auto&& ec) {
-      ptr->on_request_completed(std::forward<decltype(request_data)>(request_data), handle, ec);
-    });
+    handle->start(request,
+                  boost::asio::bind_executor(
+                    m_strand, [ptr = this->shared_from_this()](auto&& request_data, auto&& handle, auto&& ec) {
+                      ptr->on_request_completed(std::forward<decltype(request_data)>(request_data), handle, ec);
+                    }));
   }
 }
 }  // namespace internal

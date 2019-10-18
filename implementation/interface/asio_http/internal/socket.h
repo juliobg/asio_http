@@ -61,16 +61,20 @@ protected:
   }
 };
 
-template<typename Socket>
+template<typename Socket, typename Executor>
 class generic_stream
     : public transport_layer
-    , public std::enable_shared_from_this<generic_stream<Socket>>
+    , public std::enable_shared_from_this<generic_stream<Socket, Executor>>
 {
 public:
-  static std::shared_ptr<transport_layer>
-  connect(transport_layer* upper, boost::asio::io_context& context, const std::string& host, const std::string& port)
+  static std::shared_ptr<transport_layer> connect(transport_layer*         upper,
+                                                  Executor&                executor,
+                                                  boost::asio::io_context& context,
+                                                  const std::string&       host,
+                                                  const std::string&       port)
   {
-    auto socket = std::shared_ptr<generic_stream<Socket>>(new generic_stream<Socket>(upper, context));
+    auto socket =
+      std::shared_ptr<generic_stream<Socket, Executor>>(new generic_stream<Socket, Executor>(upper, executor, context));
     socket->connect(host, port);
     return socket;
   }
@@ -83,14 +87,16 @@ public:
     boost::asio::async_write(
       m_socket,
       boost::asio::const_buffer(m_write_buffer.data(), m_write_buffer.size()),
-      [ptr = this->shared_from_this()](auto&& ec, auto&& bytes) { ptr->write_handler(ec, bytes); });
+      boost::asio::bind_executor(
+        m_executor, [ptr = this->shared_from_this()](auto&& ec, auto&& bytes) { ptr->write_handler(ec, bytes); }));
   }
 
   virtual void read() override
   {
     m_socket.async_read_some(
       boost::asio::buffer(m_read_buffer),
-      [ptr = this->shared_from_this()](auto&& ec, auto&& bytes) { ptr->read_handler(ec, bytes); });
+      boost::asio::bind_executor(
+        m_executor, [ptr = this->shared_from_this()](auto&& ec, auto&& bytes) { ptr->read_handler(ec, bytes); }));
   }
 
   virtual void close() override { m_socket.close(); }
@@ -100,12 +106,14 @@ private:
   std::vector<std::uint8_t>      m_write_buffer;
   std::vector<std::uint8_t>      m_read_buffer;
   boost::asio::ip::tcp::resolver m_resolver;
+  Executor                       m_executor;
 
-  generic_stream(transport_layer* upper, boost::asio::io_context& context)
+  generic_stream(transport_layer* upper, Executor& executor, boost::asio::io_context& context)
       : transport_layer(upper)
       , m_read_buffer(1024)
       , m_socket(context)
       , m_resolver(context)
+      , m_executor(executor)
   {
   }
 
@@ -113,8 +121,10 @@ private:
   {
     boost::asio::ip::tcp::resolver::query q(host, port);
 
-    m_resolver.async_resolve(q,
-                             [ptr = this->shared_from_this()](auto&& ec, auto&& it) { ptr->resolve_handler(ec, it); });
+    m_resolver.async_resolve(
+      q, boost::asio::bind_executor(m_executor, [ptr = this->shared_from_this()](auto&& ec, auto&& it) {
+        ptr->resolve_handler(ec, it);
+      }));
   }
 
   void resolve_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator it)
@@ -126,7 +136,9 @@ private:
     }
     boost::asio::ip::tcp::endpoint ep = *it++;
 
-    m_socket.async_connect(ep, [ptr = this->shared_from_this(), it](auto&& ec) { ptr->connect_handler(ec, it); });
+    m_socket.async_connect(ep, boost::asio::bind_executor(m_executor, [ptr = this->shared_from_this(), it](auto&& ec) {
+                             ptr->connect_handler(ec, it);
+                           }));
   }
 
   void connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator it)
@@ -138,7 +150,10 @@ private:
     else
     {
       boost::asio::ip::tcp::endpoint ep = *it++;
-      m_socket.async_connect(ep, [ptr = this->shared_from_this(), it](auto&& ec) { ptr->connect_handler(ec, it); });
+      m_socket.async_connect(ep,
+                             boost::asio::bind_executor(m_executor, [ptr = this->shared_from_this(), it](auto&& ec) {
+                               ptr->connect_handler(ec, it);
+                             }));
     }
   }
 
@@ -150,22 +165,25 @@ private:
   }
 };
 
-using tcp_socket = generic_stream<boost::asio::ip::tcp::socket>;
+template<typename Executor>
+using tcp_socket = generic_stream<boost::asio::ip::tcp::socket, Executor>;
 
+template<typename Executor>
 class ssl_socket
     : public transport_layer
-    , public std::enable_shared_from_this<ssl_socket>
+    , public std::enable_shared_from_this<ssl_socket<Executor>>
 {
 public:
   static std::shared_ptr<transport_layer> connect(transport_layer*         upper,
+                                                  Executor&                executor,
                                                   boost::asio::io_context& context,
                                                   const std::string&       host,
                                                   const std::string&       port,
                                                   const ssl_settings&      ssl)
   {
-    auto socket = std::shared_ptr<ssl_socket>(new ssl_socket(upper, context, host, ssl));
+    auto socket = std::shared_ptr<ssl_socket>(new ssl_socket(upper, context, executor, host, ssl));
     socket->connect(host, port);
-    return socket;
+    return std::move(socket);
   }
 
   virtual bool is_open() override { return m_socket.lowest_layer().is_open(); }
@@ -176,14 +194,16 @@ public:
     boost::asio::async_write(
       m_socket,
       boost::asio::const_buffer(m_write_buffer.data(), m_write_buffer.size()),
-      [ptr = this->shared_from_this()](auto&& ec, auto&& bytes) { ptr->write_handler(ec, bytes); });
+      boost::asio::bind_executor(
+        m_executor, [ptr = this->shared_from_this()](auto&& ec, auto&& bytes) { ptr->write_handler(ec, bytes); }));
   }
 
   virtual void read() override
   {
     m_socket.async_read_some(
       boost::asio::buffer(m_read_buffer),
-      [ptr = this->shared_from_this()](auto&& ec, auto&& bytes) { ptr->read_handler(ec, bytes); });
+      boost::asio::bind_executor(
+        m_executor, [ptr = this->shared_from_this()](auto&& ec, auto&& bytes) { ptr->read_handler(ec, bytes); }));
   }
 
   virtual void close() override { m_socket.lowest_layer().close(); }
@@ -194,13 +214,19 @@ private:
   std::vector<std::uint8_t>                              m_write_buffer;
   std::vector<std::uint8_t>                              m_read_buffer;
   boost::asio::ip::tcp::resolver                         m_resolver;
+  Executor&                                              m_executor;
 
-  ssl_socket(transport_layer* upper, boost::asio::io_context& context, const std::string& host, const ssl_settings& ssl)
+  ssl_socket(transport_layer*         upper,
+             boost::asio::io_context& context,
+             Executor&                executor,
+             const std::string&       host,
+             const ssl_settings&      ssl)
       : transport_layer(upper)
       , m_context(boost::asio::ssl::context::sslv23)
       , m_socket(context, m_context)
       , m_read_buffer(1024)
       , m_resolver(context)
+      , m_executor(executor)
   {
     m_context.set_default_verify_paths();
     if (!ssl.client_certificate_file.empty())
@@ -223,7 +249,10 @@ private:
   {
     boost::asio::ip::tcp::resolver::query q(host, port);
 
-    m_resolver.async_resolve(q, [ptr = shared_from_this()](auto&& ec, auto&& it) { ptr->resolve_handler(ec, it); });
+    m_resolver.async_resolve(
+      q, boost::asio::bind_executor(m_executor, [ptr = this->shared_from_this()](auto&& ec, auto&& it) {
+        ptr->resolve_handler(ec, it);
+      }));
   }
 
   void resolve_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator it)
@@ -236,7 +265,9 @@ private:
     boost::asio::ip::tcp::endpoint ep = *it++;
 
     m_socket.lowest_layer().async_connect(
-      ep, [ptr = this->shared_from_this(), it](auto&& ec) { ptr->connect_handler(ec, it); });
+      ep, boost::asio::bind_executor(m_executor, [ptr = this->shared_from_this(), it](auto&& ec) {
+        ptr->connect_handler(ec, it);
+      }));
   }
 
   void connect_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator it)
@@ -244,13 +275,17 @@ private:
     if (!ec)
     {
       m_socket.async_handshake(boost::asio::ssl::stream<boost::asio::ip::tcp::socket>::handshake_type::client,
-                               [ptr = this->shared_from_this()](auto&& ec) { ptr->handshake_handler(ec); });
+                               boost::asio::bind_executor(m_executor, [ptr = this->shared_from_this()](auto&& ec) {
+                                 ptr->handshake_handler(ec);
+                               }));
     }
     else if (it != boost::asio::ip::tcp::resolver::iterator())
     {
       boost::asio::ip::tcp::endpoint ep = *it++;
       m_socket.lowest_layer().async_connect(
-        ep, [ptr = this->shared_from_this(), it](auto&& ec) { ptr->connect_handler(ec, it); });
+        ep, boost::asio::bind_executor(m_executor, [ptr = this->shared_from_this(), it](auto&& ec) {
+          ptr->connect_handler(ec, it);
+        }));
     }
     else
     {
@@ -260,7 +295,7 @@ private:
 
   void handshake_handler(const boost::system::error_code& ec) { call_on_connected(ec); }
 
-  void write_handler(const boost::system::error_code& ec, std::size_t bytes_transferred) { call_on_write(ec); }
+  void write_handler(const boost::system::error_code& ec, std::size_t) { call_on_write(ec); }
 
   void read_handler(const boost::system::error_code& ec, std::size_t bytes_transferred)
   {

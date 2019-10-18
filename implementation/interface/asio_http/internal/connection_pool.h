@@ -22,8 +22,8 @@ class http_client_connection;
 class connection_pool
 {
 public:
-  connection_pool(boost::asio::io_context::strand& strand)
-      : m_strand(strand)
+  connection_pool(boost::asio::io_context& context)
+      : m_context(context)
       , m_allocations(0)
   {
   }
@@ -32,9 +32,9 @@ public:
   void release_connection(std::shared_ptr<http_client_connection> handle, bool clean_up);
 
 private:
-  boost::asio::io_context::strand m_strand;
+  boost::asio::io_context& m_context;
   std::map<std::pair<std::string, std::uint16_t>, std::stack<std::shared_ptr<http_client_connection>>>
-    m_connection_pool;
+           m_connection_pool;
   uint64_t m_allocations;
 };
 }  // namespace internal

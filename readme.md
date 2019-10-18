@@ -121,7 +121,7 @@ boost::asio::io_context context;
 asio_http::http_client  client(http_client_settings{ 1, 2 }, context);
 ```
 
-which configures than only one active reqeuest is allowed, and the others would be enqueued, reusing the open connection when possible. The maximum number of attempts is set to 2.
+which sets that only one active request is allowed, and the others must be enqueued, reusing the open connection when possible. The maximum number of attempts is set to 2.
 
 When no value is given, pool size of 25 connections and a maximum of 5 attempts are set by default:
 
