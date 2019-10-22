@@ -226,8 +226,23 @@ TEST_F(http_test, shutdown_in_progress)
   // shutdown the request manager while the request is in progress
   m_http_client.reset();
 
-  // get should throw an exception, as the promise is destroyed
+  // request should be completed with an error
   EXPECT_EQ(std::make_error_code(boost::asio::error::operation_aborted), reply.get().error);
 }
+
+TEST_F(http_test, redirected_request)
+{
+  http_request_result reply =
+    m_http_client->get(use_std_future, get_url(REDIRECTION_RESOURCE), HTTP_CANCELLATION_TOKEN).get();
+
+  EXPECT_FALSE(reply.error);
+  EXPECT_EQ(200, reply.http_response_code);
+  EXPECT_EQ(GET_RESPONSE, reply.get_body_as_string());
+  EXPECT_EQ(GET_RESOURCE_HEADER_SIZE_EXPECTED,
+            std::accumulate(reply.headers.begin(), reply.headers.end(), 0, [](const auto& a1, const auto& a2) {
+              return a1 + a2.first.size() + a2.second.size();
+            }));
+}
+
 }  // namespace test
 }  // namespace asio_http

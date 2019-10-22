@@ -75,7 +75,8 @@ namespace test_server
 class web_client : public std::enable_shared_from_this<web_client>
 {
 public:
-  web_client(boost::asio::ip::tcp::socket&&                                                           socket,
+  web_client(boost::asio::io_context&                                                                 context,
+             boost::asio::ip::tcp::socket&&                                                           socket,
              std::shared_ptr<std::map<std::string, std::function<void(std::shared_ptr<web_client>)>>> handlers_map)
       : m_read_buffer(1024)
       , m_output_buffer()
@@ -87,6 +88,7 @@ public:
       , m_handlers_map(handlers_map)
       , m_can_close(false)
       , m_close_connection(false)
+      , m_timer(context)
   {
   }
   std::vector<char>                                                                        m_read_buffer;
@@ -103,6 +105,7 @@ public:
   std::shared_ptr<std::map<std::string, std::function<void(std::shared_ptr<web_client>)>>> m_handlers_map;
   bool                                                                                     m_can_close;
   bool                                                                                     m_close_connection;
+  boost::asio::deadline_timer                                                              m_timer;
 
   void start_reading()
   {
@@ -114,8 +117,7 @@ public:
 
   void read_client(const boost::system::error_code& error, size_t size)
   {
-    int         tmp, tmp1;
-    const char *tmp2, *tmp3;
+    const char* tmp;
 
     if ((boost::asio::error::eof != error) && (boost::asio::error::connection_reset != error))
     {
@@ -123,9 +125,9 @@ public:
 
       if (m_header_size == 0)
       {
-        if ((tmp3 = mystrnstr(m_request_buffer.data(), "\r\n\r\n", m_request_buffer.size())))
+        if ((tmp = mystrnstr(m_request_buffer.data(), "\r\n\r\n", m_request_buffer.size())))
         {
-          m_header_size = (tmp3 - m_request_buffer.data());
+          m_header_size = (tmp - m_request_buffer.data());
           m_http_head.assign(m_request_buffer.begin(), m_request_buffer.end());
         }
       }
@@ -261,6 +263,16 @@ public:
       {
         send_http_reply();
       }
+      else
+      {
+        m_timer.expires_from_now(boost::posix_time::millisec(120000));
+        m_timer.async_wait([ptr = shared_from_this()](auto&& ec) {
+          if (!ec)
+          {
+            ptr->process_client();
+          }
+        });
+      }
     }
     else
     {
@@ -296,6 +308,10 @@ public:
     if (m_requested_range > 0)
     {
       web_client_writef("HTTP/1.1 206 Partial Content\r\n");
+    }
+    else if (mystrnstr(m_response_buffer.data(), "Location", m_response_buffer.size()) != nullptr)
+    {
+      web_client_writef("HTTP/1.1 301 Moved Permanently\r\n");
     }
     else
     {
@@ -340,25 +356,31 @@ public:
     }
     else if (m_can_close)
     {
-      m_can_close = false;
-      m_response_buffer.clear();
-      m_output_buffer.clear();
-      m_write_buffer.clear();
-      m_request_buffer.clear();
-      m_http_head.clear();
-      m_header_size     = 0;
-      m_content_size    = 0;
-      m_requested_range = 0;
       if (m_close_connection)
       {
         m_socket.close();
-        m_close_connection = false;
       }
       else
       {
+        client_data_cleanup();
         start_reading();
       }
     }
+  }
+
+  void client_data_cleanup()
+  {
+    m_can_close        = false;
+    m_close_connection = false;
+    m_response_buffer.clear();
+    m_output_buffer.clear();
+    m_write_buffer.clear();
+    m_request_buffer.clear();
+    m_http_head.clear();
+    m_header_size     = 0;
+    m_content_size    = 0;
+    m_requested_range = 0;
+    m_timer.cancel();
   }
 
   void write_client(const boost::system::error_code& error, size_t size)
@@ -406,7 +428,7 @@ private:
   }
   void handle_accept(const boost::system::error_code& error_code, boost::asio::ip::tcp::socket socket)
   {
-    const auto newClient = std::make_shared<web_client>(std::move(socket), m_handlers_map);
+    const auto newClient = std::make_shared<web_client>(m_io_context, std::move(socket), m_handlers_map);
     newClient->start_reading();
     start_accept();
   }

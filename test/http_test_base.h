@@ -32,6 +32,7 @@ const std::string TIMEOUT_RESOURCE                  = "/timeout";
 const std::string ECHO_RESOURCE                     = "/echo";
 const std::string POST_RESOURCE                     = "/post";
 const std::string CONNECTION_CLOSE_RESOURCE         = "/close";
+const std::string REDIRECTION_RESOURCE              = "/redirect";
 
 const std::string HTTP_CANCELLATION_TOKEN = "asio_httpTest";
 
@@ -48,6 +49,13 @@ const std::function<void(std::shared_ptr<test_server::web_client>)> get_handler 
     client_data->response_printf(GET_RESPONSE.c_str());
   };
 
+const std::function<void(std::shared_ptr<test_server::web_client>)> redirection_handler =
+  [](std::shared_ptr<test_server::web_client> client_data) {
+    client_data->response_printf("Location: http://127.0.0.1:10124/anything\r\n");
+    client_data->response_printf("Content-type: text/plain\r\n\r\n");
+    client_data->response_printf("Moved");
+  };
+
 const std::function<void(std::shared_ptr<test_server::web_client>)> connection_close_handler =
   [](std::shared_ptr<test_server::web_client> client_data) {
     client_data->response_printf("Content-type: text/plain\r\n\r\n");
@@ -55,13 +63,8 @@ const std::function<void(std::shared_ptr<test_server::web_client>)> connection_c
     client_data->m_close_connection = true;
   };
 
-class timeout_callable
-{
-public:
-  std::vector<std::shared_ptr<test_server::web_client>> web_clients;
-
-  void operator()(std::shared_ptr<test_server::web_client> client_data) { web_clients.push_back(client_data); }
-};
+const std::function<void(std::shared_ptr<test_server::web_client>)> timeout_handler =
+  [](std::shared_ptr<test_server::web_client>) {};
 
 const std::function<void(std::shared_ptr<test_server::web_client>)> echo_handler =
   [](std::shared_ptr<test_server::web_client> client_data) {
@@ -126,11 +129,15 @@ protected:
                      10123,
                      { { GET_RESOURCE, get_handler },
                        { CONNECTION_CLOSE_RESOURCE, connection_close_handler },
-                       { TIMEOUT_RESOURCE, timeout_callable() },
+                       { TIMEOUT_RESOURCE, timeout_handler },
                        { ECHO_RESOURCE, echo_handler },
-                       { POST_RESOURCE, [&](std::shared_ptr<test_server::web_client> client_data) {
-                          m_post_data_queue.add_request_post_data(client_data);
-                        } } })
+                       { REDIRECTION_RESOURCE, redirection_handler },
+                       { POST_RESOURCE,
+                         [&](std::shared_ptr<test_server::web_client> client_data) {
+                           m_post_data_queue.add_request_post_data(client_data);
+                         } } })
+      , m_web_server_redirected(m_test_io_context, "127.0.0.1", 10124, { { GET_RESOURCE, get_handler } })
+
   {
   }
 
@@ -149,6 +156,7 @@ protected:
 
   post_data_queue         m_post_data_queue;
   test_server::web_server m_web_server;
+  test_server::web_server m_web_server_redirected;
 };
 }  // namespace test
 }  // namespace asio_http
