@@ -26,14 +26,12 @@ public:
   virtual ~http_client();
 
   template<typename CompletionToken>
-  auto execute_request(CompletionToken&&                             completion_token,
-                       std::shared_ptr<const http_request_interface> request,
-                       const std::string&                            cancellation_token)
+  auto execute_request(CompletionToken&& completion_token, http_request request, const std::string& cancellation_token)
   {
     boost::asio::async_completion<CompletionToken, void(http_request_result)> init{ completion_token };
 
     internal::request_data new_request(
-      std::move(request),
+      std::make_shared<http_request>(std::move(request)),
       init.completion_handler,
       boost::asio::get_associated_executor(init.completion_handler, m_request_manager->get_strand()),
       cancellation_token);
@@ -47,13 +45,13 @@ public:
   template<typename CompletionToken>
   auto get(CompletionToken&& completion_token, const std::string& url_string, const std::string& cancellation_token)
   {
-    const auto request = std::make_shared<http_request>(http_request_interface::http_method::GET,
-                                                        url(url_string),
-                                                        http_request::DEFAULT_TIMEOUT_MSEC,
-                                                        ssl_settings(),
-                                                        std::vector<std::string>(),
-                                                        std::vector<std::uint8_t>(),
-                                                        http_request_interface::compression_policy::never);
+    http_request request{ http_method::GET,
+                          url(url_string),
+                          http_request::DEFAULT_TIMEOUT_MSEC,
+                          ssl_settings(),
+                          std::vector<std::string>(),
+                          std::vector<std::uint8_t>(),
+                          compression_policy::never };
 
     return execute_request(std::forward<CompletionToken>(completion_token), request, cancellation_token);
   }
@@ -71,13 +69,13 @@ public:
             const std::string&        content_type,
             const std::string&        cancellation_token)
   {
-    const auto request = std::make_shared<http_request>(http_request_interface::http_method::POST,
-                                                        url(url_string),
-                                                        http_request::DEFAULT_TIMEOUT_MSEC,
-                                                        ssl_settings(),
-                                                        std::vector<std::string>{ "Content-Type: " + content_type },
-                                                        std::move(data),
-                                                        http_request_interface::compression_policy::never);
+    http_request request{ http_method::POST,
+                          url(url_string),
+                          http_request::DEFAULT_TIMEOUT_MSEC,
+                          ssl_settings(),
+                          std::vector<std::string>{ "Content-Type: " + content_type },
+                          std::move(data),
+                          compression_policy::never };
 
     return execute_request(std::forward<CompletionToken>(completion_token), request, cancellation_token);
   }

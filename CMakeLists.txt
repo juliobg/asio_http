@@ -41,7 +41,6 @@ set(INTERFACE_FILES
   interface/asio_http/http_request_result.h
   interface/asio_http/http_client.h
   interface/asio_http/http_client_settings.h
-  interface/asio_http/http_request_interface.h
   interface/asio_http/url.h
 )
 

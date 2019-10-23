@@ -10,7 +10,6 @@
 #include "asio_http/future_handler.h"
 #include "asio_http/http_client.h"
 #include "asio_http/http_request.h"
-#include "asio_http/http_request_interface.h"
 #include "asio_http/http_request_result.h"
 #include "asio_http/test_server/test_server.h"
 

@@ -16,13 +16,12 @@ namespace
 {
 using std::uint8_t;
 
-auto compress_data_source(std::vector<uint8_t> data, http_request_interface::compression_policy policy)
+auto compress_data_source(std::vector<uint8_t> data, compression_policy policy)
 {
-  if (policy != http_request_interface::compression_policy::never && !data.empty())
+  if (policy != compression_policy::never && !data.empty())
   {
     auto compressed_data = compress(data);
-    if (!compressed_data.empty() &&
-        (policy == http_request_interface::compression_policy::always || compressed_data.size() < data.size()))
+    if (!compressed_data.empty() && (policy == compression_policy::always || compressed_data.size() < data.size()))
     {
       data.swap(compressed_data);
       return std::make_pair(data, std::vector<std::string>{ "Content-Encoding: gzip" });
@@ -32,7 +31,7 @@ auto compress_data_source(std::vector<uint8_t> data, http_request_interface::com
 }
 }  // namespace
 
-data_source::data_source(std::vector<uint8_t> data, http_request_interface::compression_policy policy)
+data_source::data_source(std::vector<uint8_t> data, compression_policy policy)
     : data_source(compress_data_source(std::move(data), policy))
 {
 }

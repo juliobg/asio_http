@@ -17,8 +17,6 @@
 
 namespace asio_http
 {
-class http_request_interface;
-
 struct http_request_stats
 {
   std::chrono::duration<double> name_lookup_time_s;

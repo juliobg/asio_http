@@ -8,7 +8,6 @@
 
 #include "asio_http/future_handler.h"
 #include "asio_http/http_request.h"
-#include "asio_http/http_request_interface.h"
 
 #include <future>
 #include <gtest/gtest.h>

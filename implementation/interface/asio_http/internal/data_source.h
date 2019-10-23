@@ -7,7 +7,7 @@
 #ifndef ASIO_HTTP_DATA_SOURCE_H
 #define ASIO_HTTP_DATA_SOURCE_H
 
-#include "asio_http/http_request_interface.h"
+#include "asio_http/http_request.h"
 
 #include <sstream>
 #include <utility>
@@ -21,7 +21,7 @@ class data_source
 {
 public:
   data_source(const data_source&) = delete;
-  data_source(std::vector<std::uint8_t> data, http_request_interface::compression_policy policy);
+  data_source(std::vector<std::uint8_t> data, compression_policy policy);
 
   size_t read_callback(char* data, size_t size);
 

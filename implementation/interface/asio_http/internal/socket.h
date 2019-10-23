@@ -7,7 +7,7 @@
 #ifndef ASIO_HTTP_SOCKET_H
 #define ASIO_HTTP_SOCKET_H
 
-#include "asio_http/http_request_interface.h"
+#include "asio_http/http_request.h"
 
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>

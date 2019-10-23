@@ -9,7 +9,6 @@
 #include "asio_http/error.h"
 #include "asio_http/future_handler.h"
 #include "asio_http/http_request.h"
-#include "asio_http/http_request_interface.h"
 
 #include <gtest/gtest.h>
 #include <memory>
@@ -44,13 +43,9 @@ TEST_F(http_test, get_request)
 
 TEST_F(http_test, head_request)
 {
-  auto request = std::make_shared<http_request>(http_request_interface::http_method::HEAD,
-                                                url(get_url(GET_RESOURCE)),
-                                                120000,
-                                                ssl_settings(),
-                                                std::vector<std::string>(),
-                                                std::vector<uint8_t>(),
-                                                http_request_interface::compression_policy::never);
+  http_request request{ http_method::HEAD,        url(get_url(GET_RESOURCE)), 120000,
+                        ssl_settings(),           std::vector<std::string>(), std::vector<uint8_t>(),
+                        compression_policy::never };
 
   auto reply = m_http_client->execute_request(use_std_future, request, HTTP_CANCELLATION_TOKEN).get();
 
@@ -78,37 +73,12 @@ TEST_F(http_test, post_request)
   EXPECT_EQ(postdata, reply.get_body_as_string());
 }
 
-TEST_F(http_test, request_destroyed)
-{
-  auto request = std::make_shared<http_request>(http_request_interface::http_method::GET,
-                                                url(get_url(GET_RESOURCE)),
-                                                120000,
-                                                ssl_settings(),
-                                                std::vector<std::string>(),
-                                                std::vector<uint8_t>(),
-                                                http_request_interface::compression_policy::never);
-
-  std::weak_ptr<http_request_interface> weak(request);
-  EXPECT_FALSE(weak.expired());
-  m_http_client->execute_request(use_std_future, std::move(request), HTTP_CANCELLATION_TOKEN).get();
-
-  // Execute a new request for synchronization purposes. I.e., before accepting and completing the
-  // new request, the previous request must be deleted
-  m_http_client->get(use_std_future, get_url(GET_RESOURCE)).get();
-
-  EXPECT_TRUE(weak.expired());
-}
-
 TEST_F(http_test, timeout)
 {
   // Request with 1 second timeout
-  const auto request = std::make_shared<http_request>(http_request_interface::http_method::GET,
-                                                      url(get_url(TIMEOUT_RESOURCE)),
-                                                      1000,
-                                                      ssl_settings(),
-                                                      std::vector<std::string>(),
-                                                      std::vector<uint8_t>(),
-                                                      http_request_interface::compression_policy::never);
+  http_request request{ http_method::GET,         url(get_url(TIMEOUT_RESOURCE)), 1000,
+                        ssl_settings(),           std::vector<std::string>(),     std::vector<uint8_t>(),
+                        compression_policy::never };
 
   // Execute request and wait until it is ready
   http_request_result reply = m_http_client->execute_request(use_std_future, request, HTTP_CANCELLATION_TOKEN).get();

@@ -8,7 +8,7 @@
 #define ASIO_HTTP_CLIENT_CONNECTION_H
 
 #include <asio_http/error.h>
-#include <asio_http/http_request_interface.h>
+#include <asio_http/http_request.h>
 #include <asio_http/http_request_result.h>
 #include <asio_http/internal/data_sink.h>
 #include <asio_http/internal/data_source.h>
@@ -36,27 +36,25 @@ enum class connection_state
   done
 };
 
-inline std::string http_method_to_string(http_request_interface::http_method method)
+inline std::string http_method_to_string(http_method method)
 {
-  static const std::map<http_request_interface::http_method, std::string> map{
-    { http_request_interface::http_method::GET, "GET" },
-    { http_request_interface::http_method::HEAD, "HEAD" },
-    { http_request_interface::http_method::PUT, "PUT" },
-    { http_request_interface::http_method::POST, "POST" }
-  };
+  static const std::map<http_method, std::string> map{ { http_method::GET, "GET" },
+                                                       { http_method::HEAD, "HEAD" },
+                                                       { http_method::PUT, "PUT" },
+                                                       { http_method::POST, "POST" } };
 
   return map.at(method);
 }
 
 struct request_buffers
 {
-  request_buffers(std::shared_ptr<const http_request_interface> request)
+  request_buffers(std::shared_ptr<const http_request> request)
       : m_request(request)
       , m_data_source(request->get_post_data(), request->get_compress_post_data_policy())
       , m_state(connection_state::in_progress)
   {
   }
-  std::shared_ptr<const http_request_interface>    m_request;
+  std::shared_ptr<const http_request>              m_request;
   std::vector<std::pair<std::string, std::string>> m_headers;
   std::pair<std::string, std::string>              m_current_header;
   data_sink                                        m_data_sink;
@@ -102,7 +100,7 @@ struct http_client_connection
 {
   http_client_connection(boost::asio::io_context& io_context, std::pair<std::string, std::uint16_t> host);
   ~http_client_connection() { m_socket->set_upper(nullptr); }
-  void         start(std::shared_ptr<const http_request_interface> request,
+  void         start(std::shared_ptr<const http_request> request,
                      std::function<void(request_buffers&&, std::shared_ptr<http_client_connection>, boost::system::error_code)>
                        callback);
   virtual void on_connected(const boost::system::error_code& ec) override;
@@ -182,7 +180,7 @@ inline http_client_connection::http_client_connection(boost::asio::io_context&  
 }
 
 inline void http_client_connection::start(
-  std::shared_ptr<const http_request_interface>                                                              request,
+  std::shared_ptr<const http_request>                                                                        request,
   std::function<void(request_buffers&&, std::shared_ptr<http_client_connection>, boost::system::error_code)> callback)
 {
   m_current_request.reset(new request_buffers(request));
@@ -315,7 +313,7 @@ inline int http_client_connection::on_headers_complete(http_parser* parser)
   {
     obj->m_current_request->push_current_header();
   }
-  if (obj->m_current_request->m_request->get_http_method() == http_request_interface::http_method::HEAD)
+  if (obj->m_current_request->m_request->get_http_method() == http_method::HEAD)
   {
     return 1;
   }

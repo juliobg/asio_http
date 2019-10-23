@@ -7,7 +7,6 @@
 #ifndef ASIO_HTTP_HTTP_REQUEST_H
 #define ASIO_HTTP_HTTP_REQUEST_H
 
-#include "asio_http/http_request_interface.h"
 #include "asio_http/url.h"
 
 #include <memory>
@@ -15,7 +14,41 @@
 
 namespace asio_http
 {
-class http_request : public http_request_interface
+// Path to the file holding the private key, the client
+// certificate and CA bundle, respectively
+struct ssl_settings
+{
+  ssl_settings(std::string client_private_key_file_,
+               std::string client_certificate_file_,
+               std::string certificate_authority_bundle_file_)
+      : client_private_key_file(client_private_key_file_)
+      , client_certificate_file(client_certificate_file_)
+      , certificate_authority_bundle_file(certificate_authority_bundle_file_)
+  {
+  }
+  ssl_settings() {}
+
+  std::string client_private_key_file;
+  std::string client_certificate_file;
+  std::string certificate_authority_bundle_file;
+};
+
+enum class http_method
+{
+  GET,
+  POST,
+  PUT,
+  HEAD
+};
+
+enum class compression_policy
+{
+  never,        // never compress
+  when_better,  // compress if data gets smaller after compression
+  always        // always compress, even when not smaller
+};
+
+class http_request
 {
 public:
   static const std::uint32_t DEFAULT_TIMEOUT_MSEC = 120 * 1000;
@@ -28,21 +61,21 @@ public:
                std::vector<std::uint8_t> post_data,
                compression_policy        compression_policy);
 
-  virtual http_method              get_http_method() const override { return m_http_method; }
-  virtual url                      get_url() const override { return m_url; }
-  virtual uint32_t                 get_timeout_msec() const override { return m_timeout_msec; }
-  virtual std::vector<std::string> get_http_headers() const override { return m_http_headers; }
-  virtual std::vector<uint8_t>     get_post_data() const override { return m_post_data; }
-  virtual compression_policy       get_compress_post_data_policy() const override { return m_compression_policy; }
-  virtual ssl_settings             get_ssl_settings() const override { return m_certificates; }
+  http_method              get_http_method() const { return m_http_method; }
+  url                      get_url() const { return m_url; }
+  uint32_t                 get_timeout_msec() const { return m_timeout_msec; }
+  std::vector<std::string> get_http_headers() const { return m_http_headers; }
+  std::vector<uint8_t>     get_post_data() const { return m_post_data; }
+  compression_policy       get_compress_post_data_policy() const { return m_compression_policy; }
+  ssl_settings             get_ssl_settings() const { return m_certificates; }
 
-  const http_method               m_http_method;
-  const url                       m_url;
-  const std::uint32_t             m_timeout_msec;
-  const ssl_settings              m_certificates;
-  const std::vector<std::string>  m_http_headers;
-  const std::vector<std::uint8_t> m_post_data;
-  const compression_policy        m_compression_policy;
+  http_method               m_http_method;
+  url                       m_url;
+  std::uint32_t             m_timeout_msec;
+  ssl_settings              m_certificates;
+  std::vector<std::string>  m_http_headers;
+  std::vector<std::uint8_t> m_post_data;
+  compression_policy        m_compression_policy;
 };
 }  // namespace asio_http
 
