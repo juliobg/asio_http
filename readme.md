@@ -20,10 +20,10 @@ Requirements
 ------------
 * Boost 1.66
 * zlib
-* C++14
+* C++17
 * OpenSSL
 
-It should work with any C++14 compliant compiler, except for the coroutines handler and tests, which are only enabled for Clang 5.
+It should work with any C++17 compliant compiler, except for the coroutines handler and tests, which are only enabled for Clang 5.
 
 Installation
 ------------

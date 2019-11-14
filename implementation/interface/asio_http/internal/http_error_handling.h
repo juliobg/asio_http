@@ -2,7 +2,7 @@
     asio_http: http client library for boost asio
     Copyright (c) 2017-2019 Julio Becerra Gomez
     See COPYING for license information.
-*/
+    */
 
 #ifndef ASIO_HTTP_ERROR_HANDLING_H
 #define ASIO_HTTP_ERROR_HANDLING_H

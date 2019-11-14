@@ -7,6 +7,8 @@
 #ifndef ASIO_HTTP_CONNECTION_POOL_H
 #define ASIO_HTTP_CONNECTION_POOL_H
 
+#include <asio_http/internal/tuple_ptr.h>
+
 #include <boost/asio.hpp>
 
 #include <map>
@@ -15,9 +17,15 @@
 
 namespace asio_http
 {
+class url;
+class ssl_settings;
+
 namespace internal
 {
 class http_client_connection;
+class transport_layer;
+
+using http_stack = tuple_ptr<http_client_connection, transport_layer>;
 
 class connection_pool
 {
@@ -28,14 +36,15 @@ public:
   {
   }
   ~connection_pool();
-  std::shared_ptr<http_client_connection> get_connection(const std::pair<std::string, std::uint16_t>& host);
-  void release_connection(std::shared_ptr<http_client_connection> handle, bool clean_up);
+  http_stack get_connection(const url& url, const ssl_settings& ssl);
+  void       release_connection(http_stack handle, bool clean_up);
 
 private:
-  boost::asio::io_context& m_context;
-  std::map<std::pair<std::string, std::uint16_t>, std::stack<std::shared_ptr<http_client_connection>>>
-           m_connection_pool;
-  uint64_t m_allocations;
+  http_stack create_stack(const url& url, const ssl_settings& ssl);
+
+  boost::asio::io_context&                                                m_context;
+  std::map<std::pair<std::string, std::uint16_t>, std::stack<http_stack>> m_connection_pool;
+  uint64_t                                                                m_allocations;
 };
 }  // namespace internal
 }  // namespace asio_http

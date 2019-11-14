@@ -10,9 +10,12 @@
 #include <asio_http/error.h>
 #include <asio_http/http_request.h>
 #include <asio_http/http_request_result.h>
+#include <asio_http/internal/connection_pool.h>
 #include <asio_http/internal/data_sink.h>
 #include <asio_http/internal/data_source.h>
+#include <asio_http/internal/http_stack_shared.h>
 #include <asio_http/internal/socket.h>
+#include <asio_http/internal/tuple_ptr.h>
 
 #include "http_parser.h"
 
@@ -35,7 +38,6 @@ enum class connection_state
   writing_body,
   done
 };
-
 inline std::string http_method_to_string(http_method method)
 {
   static const std::map<http_method, std::string> map{ { http_method::GET, "GET" },
@@ -96,13 +98,14 @@ struct request_buffers
 
 struct http_client_connection
     : transport_layer
-    , std::enable_shared_from_this<http_client_connection>
+    , shared_tuple_base<http_client_connection>
 {
-  http_client_connection(boost::asio::io_context& io_context, std::pair<std::string, std::uint16_t> host);
-  ~http_client_connection() { m_socket->set_upper(nullptr); }
-  void         start(std::shared_ptr<const http_request> request,
-                     std::function<void(request_buffers&&, std::shared_ptr<http_client_connection>, boost::system::error_code)>
-                       callback);
+  http_client_connection(std::shared_ptr<http_stack_shared>    shared_data,
+                         boost::asio::io_context&              io_context,
+                         std::pair<std::string, std::uint16_t> host);
+  ~http_client_connection() override { lower_layer->set_upper(nullptr); }
+  void         start(std::shared_ptr<const http_request>                               request,
+                     std::function<void(request_buffers&&, boost::system::error_code)> callback);
   virtual void on_connected(const boost::system::error_code& ec) override;
   virtual void on_write(const boost::system::error_code& ec) override;
   virtual void on_read(const std::uint8_t* data, std::size_t size, boost::system::error_code ec) override;
@@ -118,16 +121,15 @@ struct http_client_connection
   static int   on_status(http_parser* parser, const char* at, size_t length);
   void         write_body();
   void         send_headers();
-  boost::asio::io_context::strand m_strand;
+  std::shared_ptr<http_stack_shared> m_shared_data;
+  boost::asio::io_context::strand&   m_strand;
 
-  http_parser_settings m_settings;
-  http_parser          m_parser;
-  std::function<void(request_buffers&&, std::shared_ptr<http_client_connection>, boost::system::error_code)>
-                                        m_completed_request_callback;
-  std::pair<std::string, std::uint16_t> m_host_port;
+  http_parser_settings                                              m_settings;
+  http_parser                                                       m_parser;
+  std::function<void(request_buffers&&, boost::system::error_code)> m_completed_request_callback;
+  std::pair<std::string, std::uint16_t>                             m_host_port;
 
   std::unique_ptr<request_buffers> m_current_request;
-  std::shared_ptr<transport_layer> m_socket;
 
   boost::asio::deadline_timer m_timer;
   bool                        m_not_reusable;
@@ -141,28 +143,29 @@ struct http_client_connection
 
   void complete_request(boost::system::error_code ec)
   {
-    if ((ec || m_not_reusable) && m_socket->is_open())
+    if ((ec || m_not_reusable) && lower_layer->is_open())
     {
       m_not_reusable = true;
-      m_socket->close();
+      lower_layer->close();
     }
     if (m_current_request->m_state != connection_state::done)
     {
       m_current_request->m_state = connection_state::done;
       m_timer.cancel();
       m_current_request->m_status_code = m_parser.status_code;
-      m_completed_request_callback(std::move(*m_current_request), shared_from_this(), ec);
+      m_completed_request_callback(std::move(*m_current_request), ec);
     }
     m_completed_request_callback = nullptr;
   }
 
-  bool is_valid_connection() { return m_socket->is_open(); }
+  bool is_valid_connection() { return lower_layer->is_open(); }
 };
 
-inline http_client_connection::http_client_connection(boost::asio::io_context&              io_context,
+inline http_client_connection::http_client_connection(std::shared_ptr<http_stack_shared>    shared_data,
+                                                      boost::asio::io_context&              io_context,
                                                       std::pair<std::string, std::uint16_t> host)
-    : transport_layer(nullptr)
-    , m_strand(io_context)
+    : m_shared_data(shared_data)
+    , m_strand(shared_data->strand)
     , m_settings()
     , m_parser()
     , m_host_port(host)
@@ -179,9 +182,8 @@ inline http_client_connection::http_client_connection(boost::asio::io_context&  
   m_settings.on_headers_complete = &http_client_connection::on_headers_complete;
 }
 
-inline void http_client_connection::start(
-  std::shared_ptr<const http_request>                                                                        request,
-  std::function<void(request_buffers&&, std::shared_ptr<http_client_connection>, boost::system::error_code)> callback)
+inline void http_client_connection::start(std::shared_ptr<const http_request>                               request,
+                                          std::function<void(request_buffers&&, boost::system::error_code)> callback)
 {
   m_current_request.reset(new request_buffers(request));
   m_completed_request_callback = callback;
@@ -194,30 +196,19 @@ inline void http_client_connection::start(
     }
   });
 
-  // Reuse open connection or allocate new transport layer
-  if (m_socket && m_socket->is_open())
+  if (lower_layer->is_open())
   {
     send_headers();
   }
-  else if (request->get_url().protocol == "https")
-  {
-    m_socket = ssl_socket<boost::asio::io_context::strand>::connect(this,
-                                                                    m_strand,
-                                                                    m_strand.context(),
-                                                                    request->get_url().host,
-                                                                    std::to_string(request->get_url().port),
-                                                                    request->get_ssl_settings());
-  }
   else
   {
-    m_socket = tcp_socket<boost::asio::io_context::strand>::connect(
-      this, m_strand, m_strand.context(), request->get_url().host, std::to_string(request->get_url().port));
+    lower_layer->connect(request->get_url().host, std::to_string(request->get_url().port));
   }
 }
 
 inline void http_client_connection::send_headers()
 {
-  m_socket->write(m_current_request->print_request_headers());
+  lower_layer->write(m_current_request->print_request_headers());
 }
 
 inline void http_client_connection::on_connected(const boost::system::error_code& ec)
@@ -228,7 +219,6 @@ inline void http_client_connection::on_connected(const boost::system::error_code
   }
   else
   {
-    // throw ec;
     complete_request(ec);
   }
 }
@@ -241,7 +231,7 @@ inline void http_client_connection::on_write(const boost::system::error_code& ec
   }
   else if (m_current_request->m_data_source.get_size() == 0)
   {
-    m_socket->read();
+    lower_layer->read();
   }
   else
   {
@@ -250,11 +240,11 @@ inline void http_client_connection::on_write(const boost::system::error_code& ec
     if (count != 0)
     {
       buf.resize(count);
-      m_socket->write(buf);
+      lower_layer->write(buf);
     }
     else
     {
-      m_socket->read();
+      lower_layer->read();
     }
   }
 }
@@ -279,7 +269,7 @@ inline void http_client_connection::on_read(const std::uint8_t* data, std::size_
   // connection_state may have changed after call to http_parser_execute
   if (!ec && m_current_request->m_state != connection_state::done)
   {
-    m_socket->read();
+    lower_layer->read();
   }
   else if (ec && m_current_request->m_state != connection_state::done)
   {

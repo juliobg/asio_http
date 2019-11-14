@@ -12,6 +12,7 @@ set(IMPLEMENTATION_SOURCES
   http_test.cpp
   io_context_test.cpp
   url_test.cpp
+  tuple_ptr_test.cpp
 )
 
 if(NOT HAS_CORO)

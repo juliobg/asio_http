@@ -9,7 +9,6 @@
 
 #include "asio_http/url.h"
 
-#include <memory>
 #include <vector>
 
 namespace asio_http

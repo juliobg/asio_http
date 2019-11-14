@@ -9,6 +9,7 @@
 
 #include "asio_http/http_request.h"
 #include "asio_http/http_request_result.h"
+#include "asio_http/internal/connection_pool.h"
 
 #include <boost/asio.hpp>
 #include <chrono>
@@ -46,14 +47,14 @@ struct request_data
       , m_retries(0)
   {
   }
-  request_state                           m_request_state;
-  std::shared_ptr<http_client_connection> m_connection;
-  std::shared_ptr<const http_request>     m_http_request;
-  completion_handler                      m_completion_handler;
-  boost::asio::executor                   m_completion_executor;
-  std::string                             m_cancellation_token;
-  std::chrono::steady_clock::time_point   m_creation_time;
-  std::uint32_t                           m_retries;
+  request_state                         m_request_state;
+  http_stack                            m_connection;
+  std::shared_ptr<const http_request>   m_http_request;
+  completion_handler                    m_completion_handler;
+  boost::asio::executor                 m_completion_executor;
+  std::string                           m_cancellation_token;
+  std::chrono::steady_clock::time_point m_creation_time;
+  std::uint32_t                         m_retries;
 };
 }  // namespace internal
 }  // namespace asio_http

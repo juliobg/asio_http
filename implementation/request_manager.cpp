@@ -75,7 +75,7 @@ void request_manager::cancel_request(Index& index, const Iterator& it)
 {
   if (it->m_connection)
   {
-    it->m_connection->cancel();
+    it->m_connection.template get<0>()->cancel();
   }
   else
   {
@@ -91,9 +91,9 @@ void request_manager::handle_completed_request(Index& index, const Iterator& ite
   m_strand.post([ptr = this->shared_from_this()]() { ptr->execute_waiting_requests(); });
 }
 
-void request_manager::on_request_completed(request_buffers&&                       request_buffers,
-                                           std::shared_ptr<http_client_connection> handle,
-                                           boost::system::error_code               ec)
+void request_manager::on_request_completed(request_buffers&&         request_buffers,
+                                           http_stack&&              handle,
+                                           boost::system::error_code ec)
 {
   m_connection_pool.release_connection(handle, static_cast<bool>(ec));
 
@@ -132,18 +132,19 @@ void request_manager::execute_waiting_requests()
   if (active_requests < m_settings.max_parallel_requests && it != index.end() &&
       it->m_request_state != request_state::in_progress)
   {
-    const auto host_port = std::make_pair(it->m_http_request->get_url().host, it->m_http_request->get_url().port);
-    const auto handle    = m_connection_pool.get_connection(host_port);
-    const auto request   = it->m_http_request;
+    auto handle =
+      m_connection_pool.get_connection(it->m_http_request->get_url(), it->m_http_request->get_ssl_settings());
+    const auto request = it->m_http_request;
     index.modify(it, [&handle](request_data& request) {
       request.m_connection    = handle;
       request.m_request_state = request_state::in_progress;
     });
-    handle->start(request,
-                  boost::asio::bind_executor(
-                    m_strand, [ptr = this->shared_from_this()](auto&& request_data, auto&& handle, auto&& ec) {
-                      ptr->on_request_completed(std::forward<decltype(request_data)>(request_data), handle, ec);
-                    }));
+    handle.get<0>()->start(
+      request,
+      boost::asio::bind_executor(
+        m_strand, [ptr = this->shared_from_this(), h = std::move(handle)](auto&& request_data, auto&& ec) mutable {
+          ptr->on_request_completed(std::forward<decltype(request_data)>(request_data), std::move(h), ec);
+        }));
   }
 }
 }  // namespace internal

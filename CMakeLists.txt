@@ -23,7 +23,7 @@ endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CORO_FLAGS}")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_DEBUG")
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 INCLUDE_DIRECTORIES(/opt/local/include)
@@ -69,9 +69,11 @@ set(IMPLEMENTATION_HEADERS
   implementation/interface/asio_http/internal/connection_pool.h
   implementation/interface/asio_http/internal/data_sink.h
   implementation/interface/asio_http/internal/data_source.h
+  implementation/interface/asio_http/internal/http_stack_shared.h
   implementation/interface/asio_http/internal/request_manager.h
   implementation/interface/asio_http/internal/logging_functions.h
   implementation/interface/asio_http/internal/request_data.h
+  implementation/interface/asio_http/internal/tuple_ptr.h
   implementation/interface/asio_http/internal/compression.h
   implementation/interface/asio_http/internal/socket.h
 )

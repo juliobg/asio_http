@@ -8,6 +8,8 @@
 #define ASIO_HTTP_SOCKET_H
 
 #include "asio_http/http_request.h"
+#include "asio_http/internal/http_stack_shared.h"
+#include "asio_http/internal/tuple_ptr.h"
 
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
@@ -22,23 +24,28 @@ namespace internal
 class transport_layer
 {
 public:
-  transport_layer(transport_layer* upper)
-      : upper_layer(upper)
+  transport_layer()
+      : upper_layer(nullptr)
+      , lower_layer(nullptr)
   {
   }
   virtual ~transport_layer() {}
-  virtual void on_connected(const boost::system::error_code& ec) {}
+  virtual void connect(const std::string&, const std::string&) {}
+  virtual void on_connected(const boost::system::error_code&) {}
   virtual void read() {}
-  virtual void on_read(const std::uint8_t* data, std::size_t size, boost::system::error_code ec) {}
-  virtual void write(std::vector<std::uint8_t> data) {}
-  virtual void on_write(const boost::system::error_code& ec) {}
+  virtual void on_read(const std::uint8_t*, std::size_t, boost::system::error_code) {}
+  virtual void write(std::vector<std::uint8_t>) {}
+  virtual void on_write(const boost::system::error_code&) {}
   virtual void close() {}
   virtual bool is_open() { return false; }
-  virtual void set_upper(transport_layer* upper) { upper_layer = upper; }
+  void         set_upper(transport_layer* upper) { upper_layer = upper; }
+  void         set_lower(transport_layer* lower) { lower_layer = lower; }
 
 protected:
   transport_layer* upper_layer;
-  void             call_on_read(const std::uint8_t* data, std::size_t size, boost::system::error_code ec)
+  transport_layer* lower_layer;
+
+  void call_on_read(const std::uint8_t* data, std::size_t size, boost::system::error_code ec)
   {
     if (upper_layer != nullptr)
     {
@@ -64,19 +71,27 @@ protected:
 template<typename Socket, typename Executor>
 class generic_stream
     : public transport_layer
-    , public std::enable_shared_from_this<generic_stream<Socket, Executor>>
+    , public shared_tuple_base<generic_stream<Socket, Executor>>
 {
 public:
-  static std::shared_ptr<transport_layer> connect(transport_layer*         upper,
-                                                  Executor&                executor,
-                                                  boost::asio::io_context& context,
-                                                  const std::string&       host,
-                                                  const std::string&       port)
+  generic_stream(std::shared_ptr<http_stack_shared> shared_data, boost::asio::io_context& context)
+      : transport_layer()
+      , m_shared_data(shared_data)
+      , m_read_buffer(1024)
+      , m_socket(context)
+      , m_resolver(context)
+      , m_executor(shared_data->strand)
   {
-    auto socket =
-      std::shared_ptr<generic_stream<Socket, Executor>>(new generic_stream<Socket, Executor>(upper, executor, context));
-    socket->connect(host, port);
-    return socket;
+  }
+
+  virtual void connect(const std::string& host, const std::string& port) override
+  {
+    boost::asio::ip::tcp::resolver::query q(host, port);
+
+    m_resolver.async_resolve(
+      q, boost::asio::bind_executor(m_executor, [ptr = this->shared_from_this()](auto&& ec, auto&& it) {
+        ptr->resolve_handler(ec, it);
+      }));
   }
 
   virtual bool is_open() override { return m_socket.is_open(); }
@@ -102,30 +117,12 @@ public:
   virtual void close() override { m_socket.close(); }
 
 private:
-  Socket                         m_socket;
-  std::vector<std::uint8_t>      m_write_buffer;
-  std::vector<std::uint8_t>      m_read_buffer;
-  boost::asio::ip::tcp::resolver m_resolver;
-  Executor                       m_executor;
-
-  generic_stream(transport_layer* upper, Executor& executor, boost::asio::io_context& context)
-      : transport_layer(upper)
-      , m_read_buffer(1024)
-      , m_socket(context)
-      , m_resolver(context)
-      , m_executor(executor)
-  {
-  }
-
-  void connect(const std::string& host, const std::string& port)
-  {
-    boost::asio::ip::tcp::resolver::query q(host, port);
-
-    m_resolver.async_resolve(
-      q, boost::asio::bind_executor(m_executor, [ptr = this->shared_from_this()](auto&& ec, auto&& it) {
-        ptr->resolve_handler(ec, it);
-      }));
-  }
+  std::shared_ptr<http_stack_shared> m_shared_data;
+  Socket                             m_socket;
+  std::vector<std::uint8_t>          m_write_buffer;
+  std::vector<std::uint8_t>          m_read_buffer;
+  boost::asio::ip::tcp::resolver     m_resolver;
+  Executor                           m_executor;
 
   void resolve_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator it)
   {
@@ -171,19 +168,46 @@ using tcp_socket = generic_stream<boost::asio::ip::tcp::socket, Executor>;
 template<typename Executor>
 class ssl_socket
     : public transport_layer
-    , public std::enable_shared_from_this<ssl_socket<Executor>>
+    , public shared_tuple_base<ssl_socket<Executor>>
 {
 public:
-  static std::shared_ptr<transport_layer> connect(transport_layer*         upper,
-                                                  Executor&                executor,
-                                                  boost::asio::io_context& context,
-                                                  const std::string&       host,
-                                                  const std::string&       port,
-                                                  const ssl_settings&      ssl)
+  ssl_socket(std::shared_ptr<http_stack_shared> shared_data,
+             boost::asio::io_context&           context,
+             const std::string&                 host,
+             const ssl_settings&                ssl)
+      : transport_layer()
+      , m_shared_data(shared_data)
+      , m_context(boost::asio::ssl::context::sslv23)
+      , m_socket(context, m_context)
+      , m_read_buffer(1024)
+      , m_resolver(context)
+      , m_executor(shared_data->strand)
   {
-    auto socket = std::shared_ptr<ssl_socket>(new ssl_socket(upper, context, executor, host, ssl));
-    socket->connect(host, port);
-    return std::move(socket);
+    m_context.set_default_verify_paths();
+    if (!ssl.client_certificate_file.empty())
+    {
+      m_context.use_certificate_file(ssl.client_certificate_file, boost::asio::ssl::context_base::pem);
+    }
+    if (!ssl.client_private_key_file.empty())
+    {
+      m_context.use_private_key_file(ssl.client_private_key_file, boost::asio::ssl::context_base::pem);
+    }
+    if (!ssl.certificate_authority_bundle_file.empty())
+    {
+      m_context.use_certificate_chain_file(ssl.certificate_authority_bundle_file);
+    }
+    m_socket.set_verify_mode(boost::asio::ssl::verify_peer);
+    m_socket.set_verify_callback(boost::asio::ssl::rfc2818_verification(host));
+  }
+
+  virtual void connect(const std::string& host, const std::string& port) override
+  {
+    boost::asio::ip::tcp::resolver::query q(host, port);
+
+    m_resolver.async_resolve(
+      q, boost::asio::bind_executor(m_executor, [ptr = this->shared_from_this()](auto&& ec, auto&& it) {
+        ptr->resolve_handler(ec, it);
+      }));
   }
 
   virtual bool is_open() override { return m_socket.lowest_layer().is_open(); }
@@ -209,51 +233,13 @@ public:
   virtual void close() override { m_socket.lowest_layer().close(); }
 
 private:
+  std::shared_ptr<http_stack_shared>                     m_shared_data;
   boost::asio::ssl::context                              m_context;
   boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_socket;
   std::vector<std::uint8_t>                              m_write_buffer;
   std::vector<std::uint8_t>                              m_read_buffer;
   boost::asio::ip::tcp::resolver                         m_resolver;
   Executor&                                              m_executor;
-
-  ssl_socket(transport_layer*         upper,
-             boost::asio::io_context& context,
-             Executor&                executor,
-             const std::string&       host,
-             const ssl_settings&      ssl)
-      : transport_layer(upper)
-      , m_context(boost::asio::ssl::context::sslv23)
-      , m_socket(context, m_context)
-      , m_read_buffer(1024)
-      , m_resolver(context)
-      , m_executor(executor)
-  {
-    m_context.set_default_verify_paths();
-    if (!ssl.client_certificate_file.empty())
-    {
-      m_context.use_certificate_file(ssl.client_certificate_file, boost::asio::ssl::context_base::pem);
-    }
-    if (!ssl.client_private_key_file.empty())
-    {
-      m_context.use_private_key_file(ssl.client_private_key_file, boost::asio::ssl::context_base::pem);
-    }
-    if (!ssl.certificate_authority_bundle_file.empty())
-    {
-      m_context.use_certificate_chain_file(ssl.certificate_authority_bundle_file);
-    }
-    m_socket.set_verify_mode(boost::asio::ssl::verify_peer);
-    m_socket.set_verify_callback(boost::asio::ssl::rfc2818_verification(host));
-  }
-
-  void connect(const std::string& host, const std::string& port)
-  {
-    boost::asio::ip::tcp::resolver::query q(host, port);
-
-    m_resolver.async_resolve(
-      q, boost::asio::bind_executor(m_executor, [ptr = this->shared_from_this()](auto&& ec, auto&& it) {
-        ptr->resolve_handler(ec, it);
-      }));
-  }
 
   void resolve_handler(const boost::system::error_code& ec, boost::asio::ip::tcp::resolver::iterator it)
   {
