@@ -120,7 +120,7 @@ private:
     std::apply(
       [](auto&&... args) {
         ((args.second(args.first)), ...);
-        ((args.second.~decltype(args.second)()), ...);
+        ((std::destroy_at(std::addressof(args.second))), ...);
       },
       zip(data.first, data.second));
   }
