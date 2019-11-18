@@ -18,18 +18,6 @@ namespace asio_http
 {
 namespace internal
 {
-struct generic_category : public std::error_category
-{
-  virtual const char* name() const noexcept override { return boost::system::generic_category().name(); }
-  virtual std::string message(int value) const override { return boost::system::generic_category().message(value); }
-};
-
-struct system_category : public std::error_category
-{
-  virtual const char* name() const noexcept override { return boost::system::system_category().name(); }
-  virtual std::string message(int value) const override { return boost::system::system_category().message(value); }
-};
-
 struct http_parser_category : public boost::system::error_category
 {
   virtual const char* name() const noexcept override { return "HTTP parser error"; }
@@ -47,60 +35,13 @@ public:
     return singleton;
   }
 };
-
-class asio_mapped_error
-{
-public:
-  static std::error_code convert(const boost::system::error_code& error)
-  {
-    if (error.category() == boost::system::generic_category())
-    {
-      return std::error_code(error.value(), get_singleton_generic());
-    }
-    else if (error.category() == boost::system::system_category())
-    {
-      return std::error_code(error.value(), get_singleton_system());
-    }
-    return std::error_code(error.value(), get_singleton_generic());
-  }
-
-  static const generic_category& get_singleton_generic()
-  {
-    static const generic_category singleton;
-    return singleton;
-  }
-
-  static const system_category& get_singleton_system()
-  {
-    static const system_category singleton;
-    return singleton;
-  }
-};
 }  // namespace internal
 }  // namespace asio_http
 
-namespace std
+inline boost::system::error_code make_error_code(http_errno e)
 {
-template<>
-struct is_error_code_enum<boost::system::errc::errc_t> : public std::true_type
-{
-};
-
-inline std::error_code make_error_code(boost::system::errc::errc_t e)
-{
-  return std::error_code(static_cast<int>(e), asio_http::internal::asio_mapped_error::get_singleton_generic());
+  return boost::system::error_code(static_cast<int>(e), asio_http::internal::http_parser_error::get_singleton());
 }
-
-template<>
-struct is_error_code_enum<boost::asio::error::basic_errors> : public std::true_type
-{
-};
-
-inline std::error_code make_error_code(boost::asio::error::basic_errors e)
-{
-  return std::error_code(static_cast<int>(e), asio_http::internal::asio_mapped_error::get_singleton_system());
-}
-}  // namespace std
 
 namespace boost
 {
@@ -113,10 +54,4 @@ struct is_error_code_enum<http_errno>
 };
 }  // namespace system
 }  // namespace boost
-
-inline boost::system::error_code make_error_code(http_errno e)
-{
-  return boost::system::error_code(static_cast<int>(e), asio_http::internal::http_parser_error::get_singleton());
-}
-
 #endif

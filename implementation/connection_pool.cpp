@@ -78,7 +78,7 @@ void connection_pool::release_connection(http_stack handle, bool clean_up)
     auto new_stack = std::stack<http_stack>();
     m_connection_pool[host].swap(new_stack);
   }
-  else if (top->is_valid_connection())
+  else
   {
     m_connection_pool[host].push(handle);
   }

@@ -114,7 +114,15 @@ public:
         m_executor, [ptr = this->shared_from_this()](auto&& ec, auto&& bytes) { ptr->read_handler(ec, bytes); }));
   }
 
-  virtual void close() override { m_socket.close(); }
+  virtual void close() override
+  {
+    if (m_socket.is_open())
+    {
+      boost::system::error_code ec;
+      m_socket.shutdown(m_socket.shutdown_type::shutdown_both, ec);
+      m_socket.close();
+    }
+  }
 
 private:
   std::shared_ptr<http_stack_shared> m_shared_data;
@@ -230,7 +238,15 @@ public:
         m_executor, [ptr = this->shared_from_this()](auto&& ec, auto&& bytes) { ptr->read_handler(ec, bytes); }));
   }
 
-  virtual void close() override { m_socket.lowest_layer().close(); }
+  virtual void close() override
+  {
+    if (m_socket.lowest_layer().is_open())
+    {
+      boost::system::error_code ec;
+      m_socket.lowest_layer().shutdown(m_socket.lowest_layer().shutdown_type::shutdown_both, ec);
+      m_socket.lowest_layer().close();
+    }
+  }
 
 private:
   std::shared_ptr<http_stack_shared>                     m_shared_data;

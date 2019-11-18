@@ -19,7 +19,7 @@ namespace asio_http
 namespace internal
 {
 std::pair<bool, std::shared_ptr<http_request>> process_errors(const boost::system::error_code& ec,
-                                                              const request_buffers&           request_buffers);
+                                                              const http_result_data&           http_result_data);
 
 }  // namespace internal
 }  // namespace asio_http

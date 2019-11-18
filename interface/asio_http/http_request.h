@@ -50,7 +50,7 @@ enum class compression_policy
 class http_request
 {
 public:
-  static const std::uint32_t DEFAULT_TIMEOUT_MSEC = 120 * 1000;
+  inline static constexpr std::uint32_t DEFAULT_TIMEOUT_MSEC = 120 * 1000;
 
   http_request(http_method               http_method,
                url                       url,

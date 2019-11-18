@@ -21,6 +21,7 @@ class data_source
 {
 public:
   data_source(const data_source&) = delete;
+  data_source(data_source&&)      = default;
   data_source(std::vector<std::uint8_t> data, compression_policy policy);
 
   size_t read_callback(char* data, size_t size);

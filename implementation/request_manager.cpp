@@ -29,11 +29,11 @@ namespace internal
 namespace
 {
 http_request_result
-create_request_result(const request_data& request, request_buffers&& request_buffers, std::error_code ec)
+create_request_result(const request_data& request, http_result_data&& http_result_data, std::error_code ec)
 {
-  http_request_result result(request_buffers.m_status_code,
-                             std::move(request_buffers.m_headers),
-                             request_buffers.m_data_sink.get_data(),
+  http_request_result result(http_result_data.m_status_code,
+                             std::move(http_result_data.m_headers),
+                             std::move(http_result_data.data),
                              ec,
                              get_request_stats(request.m_creation_time));
 
@@ -44,7 +44,7 @@ create_request_result(const request_data& request, request_buffers&& request_buf
 }  // namespace
 request_manager::request_manager(const http_client_settings& settings, boost::asio::io_context& io_context)
     : m_settings(settings)
-    , m_strand(io_context)
+    , m_strand(io_context.get_executor())
     , m_connection_pool(io_context)
 {
 }
@@ -53,9 +53,9 @@ request_manager::~request_manager()
 {
 }
 
-void request_manager::execute_request(const request_data& request)
+void request_manager::execute_request(request_data&& request)
 {
-  m_requests.insert(request);
+  m_requests.insert(std::move(request));
   execute_waiting_requests();
   DLOG_F(INFO, "New request added");
 }
@@ -75,11 +75,11 @@ void request_manager::cancel_request(Index& index, const Iterator& it)
 {
   if (it->m_connection)
   {
-    it->m_connection.template get<0>()->cancel();
+    it->m_connection.template get<0>()->cancel_async();
   }
   else
   {
-    handle_completed_request(index, it, http_request_result{});
+    handle_completed_request(index, it, http_request_result(make_error_code(boost::asio::error::operation_aborted)));
   }
 }
 
@@ -88,10 +88,10 @@ void request_manager::handle_completed_request(Index& index, const Iterator& ite
 {
   completion_handler_invoker::invoke_handler(*iterator, std::move(result));
   index.erase(iterator);
-  m_strand.post([ptr = this->shared_from_this()]() { ptr->execute_waiting_requests(); });
+  boost::asio::post(m_strand, ([ptr = this->shared_from_this()]() { ptr->execute_waiting_requests(); }));
 }
 
-void request_manager::on_request_completed(request_buffers&&         request_buffers,
+void request_manager::on_request_completed(http_result_data&&        http_result_data,
                                            http_stack&&              handle,
                                            boost::system::error_code ec)
 {
@@ -101,7 +101,7 @@ void request_manager::on_request_completed(request_buffers&&         request_buf
   const auto it    = index.find(handle);
   if (it != m_requests.get<index_connection>().end())
   {
-    const auto error_handling = process_errors(ec, request_buffers);
+    const auto error_handling = process_errors(ec, http_result_data);
     if (error_handling.first && it->m_retries < m_settings.max_attempts)
     {
       index.modify(it, [newrequest = std::move(error_handling.second)](request_data& request) {
@@ -113,12 +113,11 @@ void request_manager::on_request_completed(request_buffers&&         request_buf
         request.m_request_state = request_state::waiting_retry;
         request.m_retries++;
       });
-      m_strand.post([ptr = this->shared_from_this()]() { ptr->execute_waiting_requests(); });
+      boost::asio::post(m_strand, [ptr = this->shared_from_this()]() { ptr->execute_waiting_requests(); });
     }
     else
     {
-      handle_completed_request(
-        index, it, create_request_result(*it, std::move(request_buffers), asio_mapped_error::convert(ec)));
+      handle_completed_request(index, it, create_request_result(*it, std::move(http_result_data), ec));
     }
   }
 }
@@ -139,12 +138,10 @@ void request_manager::execute_waiting_requests()
       request.m_connection    = handle;
       request.m_request_state = request_state::in_progress;
     });
-    handle.get<0>()->start(
-      request,
-      boost::asio::bind_executor(
-        m_strand, [ptr = this->shared_from_this(), h = std::move(handle)](auto&& request_data, auto&& ec) mutable {
-          ptr->on_request_completed(std::forward<decltype(request_data)>(request_data), std::move(h), ec);
-        }));
+    handle.get<0>()->start_async(
+      request, [ptr = this->shared_from_this(), h = std::move(handle)](auto&& http_result_data, auto&& ec) mutable {
+        ptr->on_request_completed_async(std::forward<decltype(http_result_data)>(http_result_data), std::move(h), ec);
+      });
   }
 }
 }  // namespace internal

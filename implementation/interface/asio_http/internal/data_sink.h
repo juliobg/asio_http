@@ -22,6 +22,7 @@ public:
   {
   }
   data_sink(const data_sink&) = delete;
+  data_sink(data_sink&&)      = default;
 
   std::uint32_t             write_callback(const void* data, std::uint32_t size, std::uint32_t count);
   std::vector<std::uint8_t> get_data() const;

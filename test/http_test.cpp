@@ -10,6 +10,7 @@
 #include "asio_http/future_handler.h"
 #include "asio_http/http_request.h"
 
+#include <boost/system/error_code.hpp>
 #include <gtest/gtest.h>
 #include <memory>
 #include <system_error>
@@ -84,7 +85,7 @@ TEST_F(http_test, timeout)
   http_request_result reply = m_http_client->execute_request(use_std_future, request, HTTP_CANCELLATION_TOKEN).get();
 
   // Check data
-  EXPECT_EQ(std::make_error_code(boost::asio::error::timed_out), reply.error);
+  EXPECT_EQ(make_error_code(boost::asio::error::timed_out), reply.error);
 }
 
 TEST_F(http_test, handle_pool)
@@ -168,22 +169,22 @@ TEST_F(http_test, cancel_requests)
 {
   std::future<http_request_result> future =
     m_http_client->get(use_std_future, get_url(TIMEOUT_RESOURCE), HTTP_CANCELLATION_TOKEN);
-
+  std::this_thread::sleep_for(std::chrono::seconds(1));
   m_http_client->cancel_requests(HTTP_CANCELLATION_TOKEN);
 
-  EXPECT_EQ(std::make_error_code(boost::asio::error::operation_aborted), future.get().error);
+  EXPECT_EQ(make_error_code(boost::asio::error::operation_aborted), future.get().error);
 }
 
 TEST_F(http_test, empty_cancellation_token)
 {
   std::future<http_request_result> future = m_http_client->get(use_std_future, get_url(TIMEOUT_RESOURCE), "");
 
-  m_http_client->cancel_requests("");
-
   std::this_thread::sleep_for(std::chrono::seconds(1));
 
+  m_http_client->cancel_requests("");
+
   // Request should be cancelled
-  EXPECT_EQ(std::make_error_code(boost::asio::error::operation_aborted), future.get().error);
+  EXPECT_EQ(make_error_code(boost::asio::error::operation_aborted), future.get().error);
 }
 
 TEST_F(http_test, shutdown_in_progress)
@@ -197,7 +198,7 @@ TEST_F(http_test, shutdown_in_progress)
   m_http_client.reset();
 
   // request should be completed with an error
-  EXPECT_EQ(std::make_error_code(boost::asio::error::operation_aborted), reply.get().error);
+  EXPECT_EQ(make_error_code(boost::asio::error::operation_aborted), reply.get().error);
 }
 
 TEST_F(http_test, redirected_request)

@@ -8,8 +8,6 @@
 
 namespace asio_http
 {
-const std::uint32_t http_request::DEFAULT_TIMEOUT_MSEC;
-
 http_request::http_request(http_method               http_method,
                            url                       url,
                            std::uint32_t             timeout_msec,

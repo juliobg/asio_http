@@ -39,6 +39,7 @@ struct request_data
                boost::asio::executor               executor,
                std::string                         cancellation_token)
       : m_request_state(request_state::waiting)
+      , m_connection()
       , m_http_request(std::move(web_request))
       , m_completion_handler(std::move(completion_handler))
       , m_completion_executor(std::move(executor))

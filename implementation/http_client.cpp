@@ -24,13 +24,11 @@ http_client::http_client(const http_client_settings& settings, boost::asio::io_c
 
 http_client::~http_client()
 {
-  m_request_manager->get_strand().post(
-              [ptr = m_request_manager]() { ptr->cancel_requests({}); });
+  m_request_manager->cancel_requests_async({});
 }
 
 void http_client::cancel_requests(const std::string& cancellation_token)
 {
-  m_request_manager->get_strand().post(
-    [ptr = m_request_manager, cancellation_token]() { ptr->cancel_requests(cancellation_token); });
+  m_request_manager->cancel_requests_async(cancellation_token);
 }
 }  // namespace asio_http

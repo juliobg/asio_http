@@ -9,6 +9,7 @@
 
 #include "asio_http/http_client_settings.h"
 #include "asio_http/internal/connection_pool.h"
+#include "asio_http/internal/http_client_connection.h"
 #include "asio_http/internal/request_data.h"
 
 #include <boost/asio.hpp>
@@ -28,19 +29,33 @@ class http_request_result;
 
 namespace internal
 {
-struct request_data;
-struct request_buffers;
-
 class request_manager : public std::enable_shared_from_this<request_manager>
 {
 public:
   request_manager(const http_client_settings& settings, boost::asio::io_context& io_context);
   ~request_manager();
-  boost::asio::io_context::strand& get_strand() { return m_strand; }
-  void                             execute_request(const request_data& request);
-  void                             cancel_requests(const std::string& cancellation_token);
+
+  void execute_request_async(request_data request) { async<&request_manager::execute_request>(request); }
+  void cancel_requests_async(std::string cancellation_token)
+  {
+    async<&request_manager::cancel_requests>(cancellation_token);
+  }
+  void
+  on_request_completed_async(http_result_data&& http_result_data, http_stack&& handle, boost::system::error_code ec)
+  {
+    async<&request_manager::on_request_completed>(std::move(http_result_data), std::move(handle), std::move(ec));
+  }
 
 private:
+  // This is a work-around as we don't have C++20 lambdas perfect capture in C++17
+  template<auto F, typename... Args>
+  void async(Args&&... args)
+  {
+    boost::asio::post(
+      m_strand, [ptr = shared_from_this(), args = std::make_tuple(std::forward<Args>(args)...)]() mutable {
+        return std::apply([ptr = ptr.get()](auto&&... args) { (ptr->*F)(std::move(args)...); }, std::move(args));
+      });
+  }
   struct index_connection
   {
   };
@@ -68,17 +83,19 @@ private:
         boost::multi_index ::tag<index_cancellation>,
         boost::multi_index::member<request_data, std::string, &request_data::m_cancellation_token>>>>;
 
+  void execute_request(request_data&& request);
+  void cancel_requests(const std::string& cancellation_token);
   void execute_waiting_requests();
-  void on_request_completed(request_buffers&& request_buffers, http_stack&& handle, boost::system::error_code ec);
+  void on_request_completed(http_result_data&& http_result_data, http_stack&& handle, boost::system::error_code ec);
   template<typename Iterator, typename Index>
   void handle_completed_request(Index& index, const Iterator& iterator, http_request_result&& result);
   template<typename Iterator, typename Index>
   void cancel_request(Index& index, const Iterator& it);
 
-  const http_client_settings      m_settings;
-  boost::asio::io_context::strand m_strand;
-  connection_pool                 m_connection_pool;
-  request_list                    m_requests;
+  const http_client_settings                                  m_settings;
+  boost::asio::strand<boost::asio::io_context::executor_type> m_strand;
+  connection_pool                                             m_connection_pool;
+  request_list                                                m_requests;
 };
 }  // namespace internal
 }  // namespace asio_http

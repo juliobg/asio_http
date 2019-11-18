@@ -33,11 +33,10 @@ public:
     internal::request_data new_request(
       std::make_shared<http_request>(std::move(request)),
       init.completion_handler,
-      boost::asio::get_associated_executor(init.completion_handler, m_request_manager->get_strand()),
+      boost::asio::get_associated_executor(init.completion_handler, boost::asio::system_executor()),
       cancellation_token);
 
-    m_request_manager->get_strand().post(
-      [ptr = m_request_manager, request = std::move(new_request)]() { ptr->execute_request(request); });
+    m_request_manager->execute_request_async(new_request);
 
     return init.result.get();
   }

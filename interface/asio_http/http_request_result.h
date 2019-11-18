@@ -42,6 +42,10 @@ public:
       , stats(std::move(request_stats_))
   {
   }
+  http_request_result(std::error_code error_)
+      : error(error_)
+  {
+  }
   http_request_result() {}
 
   // Non const to allow move semantics

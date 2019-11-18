@@ -166,7 +166,9 @@ public:
     }
   }
 
-  T* operator->() const { return ptr; }
+  T* operator->() const noexcept { return ptr; }
+
+  T* get() const noexcept { return ptr; }
 
   tuple_element_ptr<T>& operator=(const tuple_element_ptr& r)
   {
@@ -257,6 +259,16 @@ public:
     {
       cntrl->add_shared();
     }
+  }
+
+  template<typename... Y,
+           bool = std::is_same_v<std::enable_if_t<std::is_convertible_v<std::tuple<Y*...>, element_type>, nat>, nat>>
+  tuple_ptr(tuple_ptr<Y...>&& r)
+      : ptrs(r.ptrs)
+      , cntrl(r.cntrl)
+  {
+    // r.ptrs  = nullptr;
+    r.cntrl = nullptr;
   }
 
   ~tuple_ptr()

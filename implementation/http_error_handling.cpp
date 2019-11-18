@@ -32,10 +32,10 @@ std::string get_header(const std::vector<std::pair<std::string, std::string>>& h
   return h != std::end(headers) ? h->second : std::string{};
 }
 
-std::shared_ptr<http_request> create_redirection(const request_buffers& request_buffers)
+std::shared_ptr<http_request> create_redirection(const http_result_data& http_result_data)
 {
-  const std::string location = get_header(request_buffers.m_headers, "Location");
-  const auto&       request  = *request_buffers.m_request;
+  const std::string location = get_header(http_result_data.m_headers, "Location");
+  const auto&       request  = *http_result_data.m_request;
 
   if (!location.empty())
   {
@@ -55,7 +55,7 @@ std::shared_ptr<http_request> create_redirection(const request_buffers& request_
 }  // namespace
 
 std::pair<bool, std::shared_ptr<http_request>> process_errors(const boost::system::error_code& ec,
-                                                              const request_buffers&           request_buffers)
+                                                              const http_result_data&           http_result_data)
 {
   if (ec)
   {
@@ -66,7 +66,7 @@ std::pair<bool, std::shared_ptr<http_request>> process_errors(const boost::syste
     }
   }
 
-  switch (request_buffers.m_status_code)
+  switch (http_result_data.m_status_code)
   {
     case 301:
     case 302:
@@ -77,7 +77,7 @@ std::pair<bool, std::shared_ptr<http_request>> process_errors(const boost::syste
     case 307:
     case 308:
     {
-      auto new_request = create_redirection(request_buffers);
+      auto new_request = create_redirection(http_result_data);
       return { static_cast<bool>(new_request), new_request };
     }
 
