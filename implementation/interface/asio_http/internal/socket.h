@@ -119,7 +119,7 @@ public:
     if (m_socket.is_open())
     {
       boost::system::error_code ec;
-      m_socket.shutdown(m_socket.shutdown_type::shutdown_both, ec);
+      m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
       m_socket.close();
     }
   }
@@ -243,7 +243,7 @@ public:
     if (m_socket.lowest_layer().is_open())
     {
       boost::system::error_code ec;
-      m_socket.lowest_layer().shutdown(m_socket.lowest_layer().shutdown_type::shutdown_both, ec);
+      m_socket.lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_type::shutdown_both, ec);
       m_socket.lowest_layer().close();
     }
   }
