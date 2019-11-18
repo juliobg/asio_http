@@ -27,8 +27,8 @@ http_client::~http_client()
   m_request_manager->cancel_requests_async({});
 }
 
-void http_client::cancel_requests(const std::string& cancellation_token)
+void http_client::cancel_requests(std::string cancellation_token)
 {
-  m_request_manager->cancel_requests_async(cancellation_token);
+  m_request_manager->cancel_requests_async(std::move(cancellation_token));
 }
 }  // namespace asio_http

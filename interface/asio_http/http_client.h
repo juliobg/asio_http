@@ -23,10 +23,10 @@ class http_client
 public:
   http_client(const http_client_settings& settings, boost::asio::io_context& io_context);
 
-  virtual ~http_client();
+  ~http_client();
 
   template<typename CompletionToken>
-  auto execute_request(CompletionToken&& completion_token, http_request request, const std::string& cancellation_token)
+  auto execute_request(CompletionToken&& completion_token, http_request request, std::string cancellation_token)
   {
     boost::asio::async_completion<CompletionToken, void(http_request_result)> init{ completion_token };
 
@@ -34,7 +34,7 @@ public:
       std::make_shared<http_request>(std::move(request)),
       init.completion_handler,
       boost::asio::get_associated_executor(init.completion_handler, boost::asio::system_executor()),
-      cancellation_token);
+      std::move(cancellation_token));
 
     m_request_manager->execute_request_async(new_request);
 
@@ -42,53 +42,38 @@ public:
   }
 
   template<typename CompletionToken>
-  auto get(CompletionToken&& completion_token, const std::string& url_string, const std::string& cancellation_token)
+  auto get(CompletionToken&& completion_token,
+           std::string       url_string,
+           std::string       cancellation_token = {},
+           ssl_settings      ssl                = {})
   {
-    http_request request{ http_method::GET,
-                          url(url_string),
-                          http_request::DEFAULT_TIMEOUT_MSEC,
-                          ssl_settings(),
-                          std::vector<std::string>(),
-                          std::vector<std::uint8_t>(),
+    http_request request{ http_method::GET,         url(std::move(url_string)), http_request::DEFAULT_TIMEOUT_MSEC,
+                          std::move(ssl),           std::vector<std::string>(), std::vector<std::uint8_t>(),
                           compression_policy::never };
 
-    return execute_request(std::forward<CompletionToken>(completion_token), request, cancellation_token);
-  }
-
-  template<typename CompletionToken>
-  auto get(CompletionToken&& completion_token, const std::string& url_string)
-  {
-    return get(std::forward<CompletionToken>(completion_token), url_string, "");
+    return execute_request(std::forward<CompletionToken>(completion_token), request, std::move(cancellation_token));
   }
 
   template<typename CompletionToken>
   auto post(CompletionToken&&         completion_token,
-            const std::string&        url_string,
+            std::string               url_string,
             std::vector<std::uint8_t> data,
-            const std::string&        content_type,
-            const std::string&        cancellation_token)
+            std::string               content_type,
+            std::string               cancellation_token = {},
+            ssl_settings              ssl                = {})
   {
     http_request request{ http_method::POST,
-                          url(url_string),
+                          url(std::move(url_string)),
                           http_request::DEFAULT_TIMEOUT_MSEC,
-                          ssl_settings(),
+                          std::move(ssl),
                           std::vector<std::string>{ "Content-Type: " + content_type },
                           std::move(data),
                           compression_policy::never };
 
-    return execute_request(std::forward<CompletionToken>(completion_token), request, cancellation_token);
+    return execute_request(std::forward<CompletionToken>(completion_token), request, std::move(cancellation_token));
   }
 
-  template<typename CompletionToken>
-  auto post(CompletionToken&&         completion_token,
-            const std::string&        url_string,
-            std::vector<std::uint8_t> data,
-            const std::string&        content_type)
-  {
-    return post(std::forward<CompletionToken>(completion_token), url_string, data, content_type, "");
-  }
-
-  void cancel_requests(const std::string& cancellation_token);
+  void cancel_requests(std::string cancellation_token);
 
 private:
   // Declaration (initialization) order is relevant for the members below
