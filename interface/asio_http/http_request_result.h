@@ -7,6 +7,7 @@
 #ifndef ASIO_HTTP_HTTP_REQUEST_RESULT_H
 #define ASIO_HTTP_HTTP_REQUEST_RESULT_H
 
+#include <algorithm>
 #include <cassert>
 #include <cctype>  // tolower
 #include <chrono>
