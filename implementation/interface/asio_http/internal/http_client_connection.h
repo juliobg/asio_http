@@ -52,7 +52,7 @@ struct request_buffers
   request_buffers(http_method method_, std::vector<std::pair<std::string, std::string>> request_headers_, url url)
       : method(method_)
       , request_headers(std::move(request_headers_))
-      , url(std::move(url))
+      , m_url(std::move(url))
       , m_state(connection_state::in_progress)
   {
   }
@@ -62,7 +62,7 @@ struct request_buffers
   http_method                                      method;
   std::vector<std::pair<std::string, std::string>> request_headers;
   std::vector<std::pair<std::string, std::string>> headers;
-  url                                              url;
+  url                                              m_url;
   std::pair<std::string, std::string>              m_current_header;
   connection_state                                 m_state;
 
@@ -78,7 +78,7 @@ struct request_buffers
   std::vector<std::uint8_t> print_request_headers()
   {
     std::stringstream request_headers_string;
-    request_headers_string << http_method_to_string(method) << " " << url.path << " HTTP/1.1\r\n";
+    request_headers_string << http_method_to_string(method) << " " << m_url.path << " HTTP/1.1\r\n";
 
     for (const auto& header : request_headers)
     {
@@ -170,7 +170,7 @@ http_client_connection<U>::start(http_method method, url url, std::vector<std::p
   }
   else
   {
-    lower_layer->connect(m_current_request.url.host, std::to_string(m_current_request.url.port));
+    lower_layer->connect(m_current_request.m_url.host, std::to_string(m_current_request.m_url.port));
   }
 }
 
