@@ -8,6 +8,7 @@
 #define ASIO_HTTP_HTTP_REQUEST_RESULT_H
 
 #include <cassert>
+#include <cctype>  // tolower
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -17,6 +18,21 @@
 
 namespace asio_http
 {
+namespace
+{
+bool iequals(const std::string& a, const std::string& b)
+{
+  return std::equal(a.begin(), a.end(), b.begin(), b.end(), [](char a, char b) { return tolower(a) == tolower(b); });
+}
+
+std::string get_header(const std::vector<std::pair<std::string, std::string>>& headers, const std::string& header)
+{
+  const auto h =
+    std::find_if(std::begin(headers), std::end(headers), [&header](const auto& h) { return iequals(h.first, header); });
+
+  return h != std::end(headers) ? h->second : std::string{};
+}
+}  // namespace
 struct http_request_stats
 {
   std::chrono::duration<double> name_lookup_time_s;

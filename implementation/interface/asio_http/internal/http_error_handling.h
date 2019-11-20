@@ -8,7 +8,7 @@
 #define ASIO_HTTP_ERROR_HANDLING_H
 
 #include "asio_http/http_request.h"
-#include "asio_http/internal/http_client_connection.h"
+#include "asio_http/internal/http_content.h"
 
 #include <boost/system/error_code.hpp>
 #include <memory>
@@ -19,7 +19,7 @@ namespace asio_http
 namespace internal
 {
 std::pair<bool, std::shared_ptr<http_request>> process_errors(const boost::system::error_code& ec,
-                                                              const http_result_data&           http_result_data);
+                                                              const http_result_data&          http_result_data);
 
 }  // namespace internal
 }  // namespace asio_http

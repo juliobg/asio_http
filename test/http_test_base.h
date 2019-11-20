@@ -32,8 +32,16 @@ const std::string ECHO_RESOURCE                     = "/echo";
 const std::string POST_RESOURCE                     = "/post";
 const std::string CONNECTION_CLOSE_RESOURCE         = "/close";
 const std::string REDIRECTION_RESOURCE              = "/redirect";
+const std::string COMPRESSED_RESOURCE               = "/compressed";
 
 const std::string HTTP_CANCELLATION_TOKEN = "asio_httpTest";
+
+const std::vector<uint32_t> COMPRESSED_TEXT = { 0x1f, 0x8b, 0x08, 0x00, 0x64, 0x71, 0xd5, 0x5d, 0x00, 0x03,
+                                                0x0b, 0x49, 0x2d, 0x2e, 0xc9, 0xcc, 0x4b, 0x57, 0x48, 0xce,
+                                                0xcf, 0x2d, 0x28, 0x4a, 0x2d, 0x2e, 0xce, 0xcc, 0xcf, 0xe3,
+                                                0x02, 0x00, 0x4b, 0x67, 0x20, 0xb6, 0x14, 0x00, 0x00, 0x00 };
+
+const std::string UNCOMPRESSED_TEXT = "Testing compression\n";
 
 const std::uint32_t HTTP_CLIENT_POOL_SIZE = 25;
 
@@ -70,6 +78,13 @@ const std::function<void(std::shared_ptr<test_server::web_client>)> echo_handler
     client_data->response_printf("Content-type: text/plain\r\n\r\n");
     const auto data = client_data->get_post_data();
     client_data->response_printf(std::string(data.begin(), data.end()).c_str());
+  };
+
+const std::function<void(std::shared_ptr<test_server::web_client>)> compressed_handler =
+  [](std::shared_ptr<test_server::web_client> client_data) {
+    client_data->response_printf("Content-type: text/plain\r\nContent-Encoding: gzip\r\n\r\n");
+    client_data->m_response_buffer.insert(
+      std::end(client_data->m_response_buffer), COMPRESSED_TEXT.begin(), COMPRESSED_TEXT.end());
   };
 }  // namespace
 
@@ -131,6 +146,7 @@ protected:
                        { TIMEOUT_RESOURCE, timeout_handler },
                        { ECHO_RESOURCE, echo_handler },
                        { REDIRECTION_RESOURCE, redirection_handler },
+                       { COMPRESSED_RESOURCE, compressed_handler },
                        { POST_RESOURCE,
                          [&](std::shared_ptr<test_server::web_client> client_data) {
                            m_post_data_queue.add_request_post_data(client_data);
@@ -160,4 +176,4 @@ protected:
 }  // namespace test
 }  // namespace asio_http
 
-#endif  // HTTPTESTBASE_H
+#endif  // ASIO_HTTP_HTTP_TEST_BASE_H

@@ -9,7 +9,7 @@
 
 #include "asio_http/http_client_settings.h"
 #include "asio_http/internal/connection_pool.h"
-#include "asio_http/internal/http_client_connection.h"
+#include "asio_http/internal/http_content.h"
 #include "asio_http/internal/request_data.h"
 
 #include <boost/asio.hpp>

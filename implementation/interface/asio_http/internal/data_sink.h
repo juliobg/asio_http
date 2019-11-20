@@ -28,7 +28,7 @@ public:
   std::vector<std::uint8_t> get_data() const;
 
   // used to find Content-Encoding: deflate headers
-  void header_callback(const std::string& header);
+  void header_callback(const std::vector<std::pair<std::string, std::string>>&);
 
 private:
   std::ostringstream m_data;

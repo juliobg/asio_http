@@ -10,10 +10,10 @@ namespace internal
 struct http_stack_shared
 {
   http_stack_shared(boost::asio::io_context& context)
-      : strand(context)
+      : strand(context.get_executor())
   {
   }
-  boost::asio::io_context::strand strand;
+  boost::asio::strand<boost::asio::io_context::executor_type> strand;
 };
 }  // namespace internal
 }  // namespace asio_http

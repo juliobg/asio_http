@@ -10,28 +10,12 @@
 #include "asio_http/internal/request_data.h"
 #include "asio_http/internal/request_manager.h"
 
-#include <cctype>  // tolower
 #include <vector>
 
 namespace asio_http
 {
 namespace internal
 {
-namespace
-{
-bool iequals(const std::string& a, const std::string& b)
-{
-  return std::equal(a.begin(), a.end(), b.begin(), b.end(), [](char a, char b) { return tolower(a) == tolower(b); });
-}
-
-std::string get_header(const std::vector<std::pair<std::string, std::string>>& headers, const std::string& header)
-{
-  const auto h =
-    std::find_if(std::begin(headers), std::end(headers), [&header](const auto& h) { return iequals(h.first, header); });
-
-  return h != std::end(headers) ? h->second : std::string{};
-}
-
 std::shared_ptr<http_request> create_redirection(const http_result_data& http_result_data)
 {
   const std::string location = get_header(http_result_data.m_headers, "Location");
@@ -52,10 +36,9 @@ std::shared_ptr<http_request> create_redirection(const http_result_data& http_re
     return {};
   }
 }
-}  // namespace
 
 std::pair<bool, std::shared_ptr<http_request>> process_errors(const boost::system::error_code& ec,
-                                                              const http_result_data&           http_result_data)
+                                                              const http_result_data&          http_result_data)
 {
   if (ec)
   {

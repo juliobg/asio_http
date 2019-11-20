@@ -5,12 +5,11 @@
 */
 
 #include "asio_http/internal/data_sink.h"
-
+#include "asio_http/http_request_result.h"
 #include "asio_http/internal/compression.h"
 
 #include "loguru.hpp"
 
-#include <boost/algorithm/string/predicate.hpp>
 #include <vector>
 
 namespace asio_http
@@ -41,23 +40,21 @@ std::vector<uint8_t> data_sink::get_data() const
   }
 }
 
-void data_sink::header_callback(const std::string& header)
+void data_sink::header_callback(const std::vector<std::pair<std::string, std::string>>& headers)
 {
-  // Detect whether compression is used and which one
-  if (boost::icontains(header, "Content-Encoding:"))
+  const auto value = get_header(headers, "Content-Encoding");
+
+  if (iequals(value, "deflate"))
   {
-    if (header.find("deflate") != std::string::npos)
-    {
-      m_compression = compression::deflate;
-    }
-    else if (header.find("gzip") != std::string::npos)
-    {
-      m_compression = compression::gzip;
-    }
-    else
-    {
-      LOG_F(ERROR, "Unknown content encoding");
-    }
+    m_compression = compression::deflate;
+  }
+  else if (iequals(value, "gzip"))
+  {
+    m_compression = compression::gzip;
+  }
+  else
+  {
+    LOG_F(ERROR, "Unknown content encoding");
   }
 }
 }  // namespace internal

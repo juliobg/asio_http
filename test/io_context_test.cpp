@@ -40,11 +40,14 @@ TEST_F(io_context_test, get_request)
 
 TEST_F(io_context_test, request_manager_destruction)  // To be run with ASAN configuration
 {
-  auto result_future = m_http_client->get(use_std_future, get_url(GET_RESOURCE), HTTP_CANCELLATION_TOKEN);
+  for (int i = 0; i < 1000; i++)
+  {
+    auto result_future = m_http_client->get(use_std_future, get_url(GET_RESOURCE), HTTP_CANCELLATION_TOKEN);
 
-  m_http_client.reset();
+    m_http_client.reset(new http_client({}, m_io_context));
 
-  m_io_context.run();
+    m_io_context.run();
+  }
 }
 
 TEST_F(io_context_test, executor_binding)

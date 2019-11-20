@@ -44,9 +44,7 @@ TEST_F(http_test, get_request)
 
 TEST_F(http_test, head_request)
 {
-  http_request request{ http_method::HEAD,        url(get_url(GET_RESOURCE)), 120000,
-                        ssl_settings(),           std::vector<std::string>(), std::vector<uint8_t>(),
-                        compression_policy::never };
+  http_request request{ http_method::HEAD, url(get_url(GET_RESOURCE)), 120000, {}, {}, {}, compression_policy::never };
 
   auto reply = m_http_client->execute_request(use_std_future, request, HTTP_CANCELLATION_TOKEN).get();
 
@@ -77,9 +75,7 @@ TEST_F(http_test, post_request)
 TEST_F(http_test, timeout)
 {
   // Request with 1 second timeout
-  http_request request{ http_method::GET,         url(get_url(TIMEOUT_RESOURCE)), 1000,
-                        ssl_settings(),           std::vector<std::string>(),     std::vector<uint8_t>(),
-                        compression_policy::never };
+  http_request request{ http_method::GET, url(get_url(TIMEOUT_RESOURCE)), 1000, {}, {}, {}, compression_policy::never };
 
   // Execute request and wait until it is ready
   http_request_result reply = m_http_client->execute_request(use_std_future, request, HTTP_CANCELLATION_TOKEN).get();
@@ -213,6 +209,16 @@ TEST_F(http_test, redirected_request)
             std::accumulate(reply.headers.begin(), reply.headers.end(), 0, [](const auto& a1, const auto& a2) {
               return a1 + a2.first.size() + a2.second.size();
             }));
+}
+
+TEST_F(http_test, compressed_response)
+{
+  http_request_result reply =
+    m_http_client->get(use_std_future, get_url(COMPRESSED_RESOURCE), HTTP_CANCELLATION_TOKEN).get();
+
+  EXPECT_FALSE(reply.error);
+  EXPECT_EQ(200, reply.http_response_code);
+  EXPECT_EQ(UNCOMPRESSED_TEXT, reply.get_body_as_string());
 }
 
 }  // namespace test

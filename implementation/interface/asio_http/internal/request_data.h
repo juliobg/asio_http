@@ -19,8 +19,6 @@ namespace asio_http
 {
 namespace internal
 {
-class http_client_connection;
-
 // It must be that waiting < in_progress, so pending requests keep at the beginning
 // of the index_state index
 enum class request_state

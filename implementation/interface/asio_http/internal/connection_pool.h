@@ -22,10 +22,12 @@ class ssl_settings;
 
 namespace internal
 {
+template<class U>
 class http_client_connection;
-class transport_layer;
+class protocol_layer;
+class http_content;
 
-using http_stack = tuple_ptr<http_client_connection, transport_layer>;
+using http_stack = tuple_ptr<http_content, http_client_connection<http_content>, protocol_layer>;
 
 class connection_pool
 {

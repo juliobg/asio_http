@@ -8,13 +8,13 @@
 
 namespace asio_http
 {
-http_request::http_request(http_method               http_method,
-                           url                       url,
-                           std::uint32_t             timeout_msec,
-                           ssl_settings              certificates,
-                           std::vector<std::string>  http_headers,
-                           std::vector<std::uint8_t> post_data,
-                           compression_policy        compression_policy)
+http_request::http_request(http_method                                      http_method,
+                           url                                              url,
+                           std::uint32_t                                    timeout_msec,
+                           ssl_settings                                     certificates,
+                           std::vector<std::pair<std::string, std::string>> http_headers,
+                           std::vector<std::uint8_t>                        post_data,
+                           compression_policy                               compression_policy)
     : m_http_method(http_method)
     , m_url(url)
     , m_timeout_msec(timeout_msec)

@@ -21,15 +21,11 @@ namespace asio_http
 {
 namespace internal
 {
-class transport_layer
+class protocol_layer
 {
 public:
-  transport_layer()
-      : upper_layer(nullptr)
-      , lower_layer(nullptr)
-  {
-  }
-  virtual ~transport_layer() {}
+  protocol_layer() {}
+  virtual ~protocol_layer() {}
   virtual void connect(const std::string&, const std::string&) {}
   virtual void on_connected(const boost::system::error_code&) {}
   virtual void read() {}
@@ -38,44 +34,16 @@ public:
   virtual void on_write(const boost::system::error_code&) {}
   virtual void close() {}
   virtual bool is_open() { return false; }
-  void         set_upper(transport_layer* upper) { upper_layer = upper; }
-  void         set_lower(transport_layer* lower) { lower_layer = lower; }
-
-protected:
-  transport_layer* upper_layer;
-  transport_layer* lower_layer;
-
-  void call_on_read(const std::uint8_t* data, std::size_t size, boost::system::error_code ec)
-  {
-    if (upper_layer != nullptr)
-    {
-      upper_layer->on_read(data, size, ec);
-    }
-  }
-  void call_on_connected(boost::system::error_code ec)
-  {
-    if (upper_layer != nullptr)
-    {
-      upper_layer->on_connected(ec);
-    }
-  }
-  void call_on_write(boost::system::error_code ec)
-  {
-    if (upper_layer != nullptr)
-    {
-      upper_layer->on_write(ec);
-    }
-  }
 };
 
 template<typename Socket, typename Executor>
 class generic_stream
-    : public transport_layer
+    : public protocol_layer
     , public shared_tuple_base<generic_stream<Socket, Executor>>
 {
 public:
   generic_stream(std::shared_ptr<http_stack_shared> shared_data, boost::asio::io_context& context)
-      : transport_layer()
+      : protocol_layer()
       , m_shared_data(shared_data)
       , m_read_buffer(1024)
       , m_socket(context)
@@ -124,6 +92,8 @@ public:
     }
   }
 
+  protocol_layer* upper_layer;
+
 private:
   std::shared_ptr<http_stack_shared> m_shared_data;
   Socket                             m_socket;
@@ -136,7 +106,7 @@ private:
   {
     if (ec)
     {
-      call_on_connected(ec);
+      upper_layer->on_connected(ec);
       return;
     }
     boost::asio::ip::tcp::endpoint ep = *it++;
@@ -150,7 +120,7 @@ private:
   {
     if (!ec || it == boost::asio::ip::tcp::resolver::iterator())
     {
-      call_on_connected(ec);
+      upper_layer->on_connected(ec);
     }
     else
     {
@@ -162,11 +132,11 @@ private:
     }
   }
 
-  void write_handler(const boost::system::error_code& ec, std::size_t bytes_transferred) { call_on_write(ec); }
+  void write_handler(const boost::system::error_code& ec, std::size_t) { upper_layer->on_write(ec); }
 
   void read_handler(const boost::system::error_code& ec, std::size_t bytes_transferred)
   {
-    call_on_read(m_read_buffer.data(), bytes_transferred, ec);
+    upper_layer->on_read(m_read_buffer.data(), bytes_transferred, ec);
   }
 };
 
@@ -175,7 +145,7 @@ using tcp_socket = generic_stream<boost::asio::ip::tcp::socket, Executor>;
 
 template<typename Executor>
 class ssl_socket
-    : public transport_layer
+    : public protocol_layer
     , public shared_tuple_base<ssl_socket<Executor>>
 {
 public:
@@ -183,7 +153,7 @@ public:
              boost::asio::io_context&           context,
              const std::string&                 host,
              const ssl_settings&                ssl)
-      : transport_layer()
+      : protocol_layer()
       , m_shared_data(shared_data)
       , m_context(boost::asio::ssl::context::sslv23)
       , m_socket(context, m_context)
@@ -248,6 +218,8 @@ public:
     }
   }
 
+  protocol_layer* upper_layer;
+
 private:
   std::shared_ptr<http_stack_shared>                     m_shared_data;
   boost::asio::ssl::context                              m_context;
@@ -261,7 +233,7 @@ private:
   {
     if (ec)
     {
-      call_on_connected(ec);
+      upper_layer->on_connected(ec);
       return;
     }
     boost::asio::ip::tcp::endpoint ep = *it++;
@@ -291,17 +263,17 @@ private:
     }
     else
     {
-      call_on_connected(ec);
+      upper_layer->on_connected(ec);
     }
   }
 
-  void handshake_handler(const boost::system::error_code& ec) { call_on_connected(ec); }
+  void handshake_handler(const boost::system::error_code& ec) { upper_layer->on_connected(ec); }
 
-  void write_handler(const boost::system::error_code& ec, std::size_t) { call_on_write(ec); }
+  void write_handler(const boost::system::error_code& ec, std::size_t) { upper_layer->on_write(ec); }
 
   void read_handler(const boost::system::error_code& ec, std::size_t bytes_transferred)
   {
-    call_on_read(m_read_buffer.data(), bytes_transferred, ec);
+    upper_layer->on_read(m_read_buffer.data(), bytes_transferred, ec);
   }
 };
 }  // namespace internal

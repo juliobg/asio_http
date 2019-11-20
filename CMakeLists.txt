@@ -70,6 +70,7 @@ set(IMPLEMENTATION_HEADERS
   implementation/interface/asio_http/internal/data_sink.h
   implementation/interface/asio_http/internal/data_source.h
   implementation/interface/asio_http/internal/http_stack_shared.h
+  implementation/interface/asio_http/internal/http_content.h
   implementation/interface/asio_http/internal/request_manager.h
   implementation/interface/asio_http/internal/logging_functions.h
   implementation/interface/asio_http/internal/request_data.h

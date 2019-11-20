@@ -47,8 +47,12 @@ public:
            std::string       cancellation_token = {},
            ssl_settings      ssl                = {})
   {
-    http_request request{ http_method::GET,         url(std::move(url_string)), http_request::DEFAULT_TIMEOUT_MSEC,
-                          std::move(ssl),           std::vector<std::string>(), std::vector<std::uint8_t>(),
+    http_request request{ http_method::GET,
+                          url(std::move(url_string)),
+                          http_request::DEFAULT_TIMEOUT_MSEC,
+                          std::move(ssl),
+                          {},
+                          std::vector<std::uint8_t>(),
                           compression_policy::never };
 
     return execute_request(std::forward<CompletionToken>(completion_token), request, std::move(cancellation_token));
@@ -62,13 +66,11 @@ public:
             std::string               cancellation_token = {},
             ssl_settings              ssl                = {})
   {
-    http_request request{ http_method::POST,
-                          url(std::move(url_string)),
-                          http_request::DEFAULT_TIMEOUT_MSEC,
-                          std::move(ssl),
-                          std::vector<std::string>{ "Content-Type: " + content_type },
-                          std::move(data),
-                          compression_policy::never };
+    http_request request{
+      http_method::POST,        url(std::move(url_string)),           http_request::DEFAULT_TIMEOUT_MSEC,
+      std::move(ssl),           { { "Content-Type", content_type } }, std::move(data),
+      compression_policy::never
+    };
 
     return execute_request(std::forward<CompletionToken>(completion_token), request, std::move(cancellation_token));
   }
