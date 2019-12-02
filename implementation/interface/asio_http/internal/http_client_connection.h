@@ -92,10 +92,10 @@ struct request_buffers
   }
 };
 
-template<class U>
+template<std::size_t N, typename Ls>
 class http_client_connection
     : public protocol_layer
-    , public shared_tuple_base<http_client_connection<U>>
+    , public shared_tuple_base<http_client_connection<N, Ls>>
 {
 public:
   http_client_connection(std::shared_ptr<http_stack_shared> shared_data, std::pair<std::string, std::uint16_t> host);
@@ -105,8 +105,8 @@ public:
   virtual void on_write(const boost::system::error_code& ec) override;
   virtual void on_read(const std::uint8_t* data, std::size_t size, boost::system::error_code ec) override;
   std::pair<std::string, std::uint16_t> get_host_and_port() const { return m_host_port; }
-  U*                                    upper_layer;
-  protocol_layer*                       lower_layer;
+  typename Ls::template type<N - 1>*    upper_layer;
+  typename Ls::template type<N + 1>*    lower_layer;
 
   void start(http_method method, url url, std::vector<std::pair<std::string, std::string>> headers);
   void close() override { lower_layer->close(); }
@@ -137,9 +137,9 @@ private:
   bool m_not_reusable;
 };
 
-template<class U>
-inline http_client_connection<U>::http_client_connection(std::shared_ptr<http_stack_shared>    shared_data,
-                                                         std::pair<std::string, std::uint16_t> host)
+template<std::size_t N, typename Ls>
+inline http_client_connection<N, Ls>::http_client_connection(std::shared_ptr<http_stack_shared>    shared_data,
+                                                             std::pair<std::string, std::uint16_t> host)
     : m_shared_data(shared_data)
     , m_strand(shared_data->strand)
     , m_settings()
@@ -157,9 +157,10 @@ inline http_client_connection<U>::http_client_connection(std::shared_ptr<http_st
   m_settings.on_headers_complete = &http_client_connection::on_headers_complete;
 }
 
-template<class U>
-inline void
-http_client_connection<U>::start(http_method method, url url, std::vector<std::pair<std::string, std::string>> headers)
+template<std::size_t N, typename Ls>
+inline void http_client_connection<N, Ls>::start(http_method                                      method,
+                                                 url                                              url,
+                                                 std::vector<std::pair<std::string, std::string>> headers)
 {
   m_current_request         = request_buffers(method, std::move(headers), std::move(url));
   m_current_request.m_state = connection_state::in_progress;
@@ -174,14 +175,14 @@ http_client_connection<U>::start(http_method method, url url, std::vector<std::p
   }
 }
 
-template<class U>
-inline void http_client_connection<U>::send_headers()
+template<std::size_t N, typename Ls>
+inline void http_client_connection<N, Ls>::send_headers()
 {
   lower_layer->write(m_current_request.print_request_headers());
 }
 
-template<class U>
-inline void http_client_connection<U>::on_connected(const boost::system::error_code& ec)
+template<std::size_t N, typename Ls>
+inline void http_client_connection<N, Ls>::on_connected(const boost::system::error_code& ec)
 {
   if (!ec)
   {
@@ -192,9 +193,8 @@ inline void http_client_connection<U>::on_connected(const boost::system::error_c
     upper_layer->on_error(ec);
   }
 }
-
-template<class U>
-inline void http_client_connection<U>::on_write(const boost::system::error_code& ec)
+template<std::size_t N, typename Ls>
+inline void http_client_connection<N, Ls>::on_write(const boost::system::error_code& ec)
 {
   if (ec)
   {
@@ -213,8 +213,9 @@ inline void http_client_connection<U>::on_write(const boost::system::error_code&
   }
 }
 
-template<class U>
-inline void http_client_connection<U>::on_read(const std::uint8_t* data, std::size_t size, boost::system::error_code ec)
+template<std::size_t N, typename Ls>
+inline void
+http_client_connection<N, Ls>::on_read(const std::uint8_t* data, std::size_t size, boost::system::error_code ec)
 {
   if (ec)
   {
@@ -248,16 +249,16 @@ inline void http_client_connection<U>::on_read(const std::uint8_t* data, std::si
   }
 }
 
-template<class U>
-inline int http_client_connection<U>::on_body(http_parser* parser, const char* at, size_t length)
+template<std::size_t N, typename Ls>
+inline int http_client_connection<N, Ls>::on_body(http_parser* parser, const char* at, size_t length)
 {
   http_client_connection* obj = static_cast<http_client_connection*>(parser->data);
   obj->upper_layer->on_body(at, length);
   return 0;
 }
 
-template<class U>
-inline int http_client_connection<U>::on_message_complete(http_parser* parser)
+template<std::size_t N, typename Ls>
+inline int http_client_connection<N, Ls>::on_message_complete(http_parser* parser)
 {
   http_client_connection* obj = static_cast<http_client_connection*>(parser->data);
   if (http_should_keep_alive(parser) == 0)
@@ -270,8 +271,8 @@ inline int http_client_connection<U>::on_message_complete(http_parser* parser)
   return 0;
 }
 
-template<class U>
-inline int http_client_connection<U>::on_headers_complete(http_parser* parser)
+template<std::size_t N, typename Ls>
+inline int http_client_connection<N, Ls>::on_headers_complete(http_parser* parser)
 {
   http_client_connection* obj = static_cast<http_client_connection*>(parser->data);
   if (!obj->m_current_request.m_current_header.first.empty())
@@ -287,15 +288,14 @@ inline int http_client_connection<U>::on_headers_complete(http_parser* parser)
   }
   return 0;
 }
-
-template<class U>
-inline int http_client_connection<U>::on_status(http_parser*, const char*, size_t)
+template<std::size_t N, typename Ls>
+inline int http_client_connection<N, Ls>::on_status(http_parser*, const char*, size_t)
 {
   return 0;
 }
 
-template<class U>
-inline int http_client_connection<U>::on_header_field(http_parser* parser, const char* at, size_t length)
+template<std::size_t N, typename Ls>
+inline int http_client_connection<N, Ls>::on_header_field(http_parser* parser, const char* at, size_t length)
 {
   http_client_connection* obj     = static_cast<http_client_connection*>(parser->data);
   auto&                   current = obj->m_current_request.m_current_header;
@@ -307,8 +307,8 @@ inline int http_client_connection<U>::on_header_field(http_parser* parser, const
   return 0;
 }
 
-template<class U>
-inline int http_client_connection<U>::on_header_value(http_parser* parser, const char* at, size_t length)
+template<std::size_t N, typename Ls>
+inline int http_client_connection<N, Ls>::on_header_value(http_parser* parser, const char* at, size_t length)
 {
   http_client_connection* obj     = static_cast<http_client_connection*>(parser->data);
   auto&                   current = obj->m_current_request.m_current_header;

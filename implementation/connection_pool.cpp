@@ -9,18 +9,112 @@
 #include "asio_http/internal/http_content.h"
 #include "asio_http/internal/http_stack_shared.h"
 #include "asio_http/internal/socket.h"
+#include "asio_http/internal/tuple_ptr.h"
 #include "asio_http/url.h"
 
 #include "loguru.hpp"
 
 #include <cinttypes>
 #include <memory>
+#include <tuple>
 #include <utility>
 
 namespace asio_http
 {
 namespace internal
 {
+template<std::size_t N, typename Ls>
+using transport = tcp_socket<N, Ls, boost::asio::strand<boost::asio::io_context::executor_type>>;
+template<std::size_t N, typename Ls>
+using ssl_transport = ssl_socket<N, Ls, boost::asio::strand<boost::asio::io_context::executor_type>>;
+
+template<template<std::size_t N, typename> class... Ls>
+struct template_to_tuple
+{
+  template<typename P, std::size_t... I>
+  using type = std::tuple<Ls<I, P>...>;
+};
+
+template<template<typename, std::size_t...> typename Ls, typename T>
+struct add_indices;
+
+template<template<typename, std::size_t...> typename Ls, std::size_t... I>
+struct add_indices<Ls, std::index_sequence<I...>>
+{
+  template<typename P>
+  using type = Ls<P, I...>;
+};
+
+template<template<typename> typename Ls>
+struct stack_type_list
+{
+  using types = Ls<stack_type_list>;
+  template<std::size_t N>
+  using type = typename std::tuple_element<N, types>::type;
+};
+
+template<std::size_t X, std::size_t... Xs>
+struct drop_first : std::index_sequence<Xs...>
+{
+};
+
+template<typename T, typename U>
+struct drop_last_impl;
+
+template<std::size_t... I, std::size_t... J>
+struct drop_last_impl<std::index_sequence<I...>, std::index_sequence<J...>>
+    : std::index_sequence<std::tuple_element<I, std::tuple<std::integral_constant<std::size_t, J>...>>::type::value...>
+{
+};
+
+template<std::size_t... Xs>
+struct drop_last : drop_last_impl<std::make_index_sequence<sizeof...(Xs) - 1>, std::index_sequence<Xs...>>
+{
+};
+
+template<typename... Ls, template<typename...> typename T, typename Args, std::size_t... I>
+auto allocate_layers(T<Ls...>*, Args&& args, std::index_sequence<I...>)
+{
+  std::tuple<std::unique_ptr<Ls>...> ptrs;
+
+  (std::apply(
+     [&ptrs](auto&&... args) {
+       std::get<I>(ptrs).reset(new
+                               typename std::tuple_element<I, T<Ls...>>::type{ std::forward<decltype(args)>(args)... });
+     },
+     std::get<I>(std::forward<Args>(args))),
+   ...);
+
+  connect_layers(drop_first<I...>(), drop_last<I...>(), ptrs);
+
+  auto t = std::apply([](auto&&... args) { return tuple_ptr<Ls...>((args.get())...); }, ptrs);
+
+  ((std::get<I>(ptrs).release()), ...);
+
+  return t;
+}
+
+template<std::size_t... I, std::size_t... J, typename T>
+void connect_layers(std::index_sequence<I...>, std::index_sequence<J...>, T& tuple)
+{
+  ((std::get<J>(tuple)->lower_layer = std::get<J + 1>(tuple).get()), ...);
+  ((std::get<I>(tuple)->upper_layer = std::get<I - 1>(tuple).get()), ...);
+}
+
+template<template<std::size_t N, typename P> class... Ls, typename... Ts>
+auto make_shared_stack(Ts... args)
+{
+  using seq = std::make_index_sequence<sizeof...(Ls)>;
+
+  using templateindexedtuple = add_indices<template_to_tuple<Ls...>::template type, seq>;
+
+  using type_list = stack_type_list<templateindexedtuple::template type>;
+
+  typename type_list::types* dummy = nullptr;
+
+  return allocate_layers(dummy, std::make_tuple(args...), std::make_index_sequence<3>());
+}
+
 http_stack connection_pool::get_connection(const url& url, const ssl_settings& ssl)
 {
   http_stack handle;
@@ -43,39 +137,30 @@ http_stack connection_pool::get_connection(const url& url, const ssl_settings& s
 
 http_stack connection_pool::create_stack(const url& url, const ssl_settings& ssl)
 {
-  // TODO This code is not exception safe
-  auto host        = std::make_pair(url.host, url.port);
   auto shared_data = std::make_shared<http_stack_shared>(m_context);
-
-  auto* http_layer         = new http_client_connection<http_content>(shared_data, host);
-  auto* http_content_layer = new http_content(shared_data, m_context);
-
-  http_layer->upper_layer         = http_content_layer;
-  http_content_layer->lower_layer = http_layer;
+  auto host        = std::make_pair(url.host, url.port);
 
   if (url.protocol == "https")
   {
-    auto transport = new ssl_socket<boost::asio::strand<boost::asio::io_context::executor_type>>(
-      shared_data, m_context, url.host, ssl);
-    http_layer->lower_layer = transport;
-    transport->upper_layer  = http_layer;
-
-    return http_stack(http_content_layer, http_layer, transport);
+    auto stack = make_shared_stack<http_content, http_client_connection, ssl_transport>(
+      std::make_tuple(shared_data, std::reference_wrapper(m_context)),
+      std::make_tuple(shared_data, host),
+      std::make_tuple(shared_data, std::reference_wrapper(m_context), url.host, ssl));
+    return stack.get<0>();
   }
   else
   {
-    auto transport =
-      new tcp_socket<boost::asio::strand<boost::asio::io_context::executor_type>>(shared_data, m_context);
-    http_layer->lower_layer = transport;
-    transport->upper_layer  = http_layer;
-
-    return http_stack(http_content_layer, http_layer, transport);
+    auto stack = make_shared_stack<http_content, http_client_connection, transport>(
+      std::make_tuple(shared_data, std::reference_wrapper(m_context)),
+      std::make_tuple(shared_data, host),
+      std::make_tuple(shared_data, std::reference_wrapper(m_context)));
+    return stack.get<0>();
   }
 }
 
 void connection_pool::release_connection(http_stack handle, bool clean_up)
 {
-  auto http_layer = handle.get<1>();
+  auto http_layer = handle;
 
   const auto host = http_layer->get_host_and_port();
 

@@ -75,7 +75,7 @@ void request_manager::cancel_request(Index& index, const Iterator& it)
 {
   if (it->m_connection)
   {
-    it->m_connection.template get<0>()->cancel_async();
+    it->m_connection->cancel_async();
   }
   else
   {
@@ -138,7 +138,7 @@ void request_manager::execute_waiting_requests()
       request.m_connection    = handle;
       request.m_request_state = request_state::in_progress;
     });
-    handle.get<0>()->start_async(
+    handle->start_async(
       request, [ptr = this->shared_from_this(), h = std::move(handle)](auto&& http_result_data, auto&& ec) mutable {
         ptr->on_request_completed_async(std::forward<decltype(http_result_data)>(http_result_data), std::move(h), ec);
       });

@@ -138,73 +138,18 @@ private:
 
 template<class Tp>
 class shared_tuple_base;
+template<class... Tp>
+class tuple_ptr;
 
-template<typename T>
-class tuple_element_ptr
-{
-public:
-  template<typename... Args>
-  friend class tuple_ptr;
-  template<class Tp>
-  friend class shared_tuple_base;
-  using element_type = T*;
-  ~tuple_element_ptr()
-  {
-    if (cntrl)
-    {
-      cntrl->release_shared();
-    }
-  }
-
-  tuple_element_ptr(const tuple_element_ptr<T>& other)
-      : ptr(other.ptr)
-      , cntrl(other.cntrl)
-  {
-    if (cntrl != nullptr)
-    {
-      cntrl->add_shared();
-    }
-  }
-
-  T* operator->() const noexcept { return ptr; }
-
-  T* get() const noexcept { return ptr; }
-
-  tuple_element_ptr<T>& operator=(const tuple_element_ptr& r)
-  {
-    tuple_element_ptr(r).swap(*this);
-    return *this;
-  }
-
-  void swap(tuple_element_ptr& r)
-  {
-    std::swap(ptr, r.ptr);
-    std::swap(cntrl, r.cntrl);
-  }
-
-  tuple_element_ptr(tuple_element_ptr<T>&& other)
-      : ptr(other.ptr)
-      , cntrl(other.cntrl)
-  {
-    other.ptr   = nullptr;
-    other.cntrl = nullptr;
-  }
-
-private:
-  element_type       ptr;
-  shared_weak_count* cntrl;
-
-  tuple_element_ptr(T* ptr_, shared_weak_count* cntrl_)
-      : ptr(ptr_)
-      , cntrl(cntrl_)
-  {
-    cntrl->add_shared();
-  }
-};
+template<typename... Tp>
+using tuple_element_ptr = tuple_ptr<Tp...>;
 
 template<typename... Args>
 class tuple_ptr
 {
+  template<typename... Y>
+  friend class tuple_ptr;
+
 public:
   template<int N, typename... Ts>
   using NthTypeOf    = typename std::tuple_element<N, std::tuple<Ts...>>::type;
@@ -267,7 +212,7 @@ public:
       : ptrs(r.ptrs)
       , cntrl(r.cntrl)
   {
-    // r.ptrs  = nullptr;
+    std::apply([](auto&... ptr) { ((ptr = nullptr), ...); }, r.ptrs);
     r.cntrl = nullptr;
   }
 
@@ -299,18 +244,32 @@ public:
     std::swap(cntrl, r.cntrl);
   }
 
+  auto operator-> () const noexcept
+  {
+    static_assert(1 == sizeof...(Args), "There are more than one element");
+    return std::get<0>(ptrs);
+  }
+
   void reset() { tuple_ptr().swap(*this); }
 
   operator bool() const { return cntrl != nullptr; }
 
-  template<int N>
+  template<typename T>
+  tuple_ptr(T* ptr_, shared_weak_count* cntrl_)
+      : ptrs(ptr_)
+      , cntrl(cntrl_)
+  {
+    cntrl->add_shared();
+  }
+
+  template<std::size_t N>
   auto get() const
   {
     static_assert(N < sizeof...(Args), "Trying to get unexisting element");
-    return tuple_element_ptr<std::remove_pointer_t<std::tuple_element_t<N, element_type>>>(std::get<N>(ptrs), cntrl);
+    return tuple_ptr<std::remove_pointer_t<std::tuple_element_t<N, element_type>>>(std::get<N>(ptrs), cntrl);
   }
 
-  auto get() const { return ptrs; }
+  auto get() const { return std::get<0>(ptrs); }
 
   template<class Yp, class OrigPtr>
   typename std::enable_if<std::is_convertible_v<OrigPtr*, const shared_tuple_base<Yp>*>, void>::type

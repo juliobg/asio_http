@@ -36,10 +36,10 @@ public:
   virtual bool is_open() { return false; }
 };
 
-template<typename Socket, typename Executor>
+template<std::size_t N, typename Ls, typename Socket, typename Executor>
 class generic_stream
     : public protocol_layer
-    , public shared_tuple_base<generic_stream<Socket, Executor>>
+    , public shared_tuple_base<generic_stream<N, Ls, Socket, Executor>>
 {
 public:
   generic_stream(std::shared_ptr<http_stack_shared> shared_data, boost::asio::io_context& context)
@@ -92,7 +92,7 @@ public:
     }
   }
 
-  protocol_layer* upper_layer;
+  typename Ls::template type<N - 1>* upper_layer;
 
 private:
   std::shared_ptr<http_stack_shared> m_shared_data;
@@ -140,13 +140,13 @@ private:
   }
 };
 
-template<typename Executor>
-using tcp_socket = generic_stream<boost::asio::ip::tcp::socket, Executor>;
+template<std::size_t N, typename Ls, typename Executor>
+using tcp_socket = generic_stream<N, Ls, boost::asio::ip::tcp::socket, Executor>;
 
-template<typename Executor>
+template<std::size_t N, typename Ls, typename Executor>
 class ssl_socket
     : public protocol_layer
-    , public shared_tuple_base<ssl_socket<Executor>>
+    , public shared_tuple_base<ssl_socket<N, Ls, Executor>>
 {
 public:
   ssl_socket(std::shared_ptr<http_stack_shared> shared_data,
@@ -218,7 +218,7 @@ public:
     }
   }
 
-  protocol_layer* upper_layer;
+  typename Ls::template type<N - 1>* upper_layer;
 
 private:
   std::shared_ptr<http_stack_shared>                     m_shared_data;

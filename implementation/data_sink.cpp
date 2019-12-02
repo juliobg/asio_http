@@ -52,7 +52,7 @@ void data_sink::header_callback(const std::vector<std::pair<std::string, std::st
   {
     m_compression = compression::gzip;
   }
-  else
+  else if (!value.empty())
   {
     LOG_F(ERROR, "Unknown content encoding");
   }

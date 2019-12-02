@@ -35,7 +35,22 @@ struct http_result_data
   std::vector<uint8_t>                             data;
 };
 
-class http_content : public shared_tuple_base<http_content>
+struct http_stack_interface
+{
+  virtual void start_async(std::shared_ptr<const http_request>                                request,
+                           std::function<void(http_result_data&&, boost::system::error_code)> callback) = 0;
+
+  virtual void cancel_async() = 0;
+
+  virtual std::pair<std::string, std::uint16_t> get_host_and_port() const = 0;
+
+  virtual ~http_stack_interface() {}
+};
+
+template<std::size_t N, typename Ls>
+class http_content
+    : public http_stack_interface
+    , public shared_tuple_base<http_content<N, Ls>>
 {
 public:
   std::shared_ptr<const http_request>                                m_request;
@@ -44,7 +59,7 @@ public:
   boost::asio::deadline_timer                                        m_timer;
   http_result_data                                                   m_result;
 
-  http_client_connection<http_content>* lower_layer;
+  typename Ls::template type<N + 1>* lower_layer;
 
   std::unique_ptr<data_sink>   m_body_sink;
   std::unique_ptr<data_source> m_body_source;
@@ -58,6 +73,8 @@ public:
   {
   }
 
+  std::pair<std::string, std::uint16_t> get_host_and_port() const override { return lower_layer->get_host_and_port(); }
+
   void start(std::shared_ptr<const http_request>                                request,
              std::function<void(http_result_data&&, boost::system::error_code)> callback)
   {
@@ -69,7 +86,7 @@ public:
     m_completed_request_callback = std::move(callback);
 
     m_timer.expires_from_now(boost::posix_time::millisec(request->get_timeout_msec()));
-    m_timer.async_wait([ptr = shared_from_this()](auto&& ec) {
+    m_timer.async_wait([ptr = this->shared_from_this()](auto&& ec) {
       if (!ec)
       {
         ptr->complete_request(boost::asio::error::timed_out);
@@ -101,7 +118,7 @@ public:
   }
 
   void start_async(std::shared_ptr<const http_request>                                request,
-                   std::function<void(http_result_data&&, boost::system::error_code)> callback)
+                   std::function<void(http_result_data&&, boost::system::error_code)> callback) override
   {
     async<&http_content::start>(std::move(request), std::move(callback));
   }
@@ -127,7 +144,7 @@ public:
     complete_request(make_error_code(boost::asio::error::operation_aborted));
     lower_layer->close();
   }
-  void cancel_async() { async<&http_content::cancel>(); }
+  void cancel_async() override { async<&http_content::cancel>(); }
 
 private:
   // This is a work-around as we don't have C++20 lambdas perfect capture in C++17
@@ -135,7 +152,7 @@ private:
   void async(Args&&... args)
   {
     boost::asio::post(
-      m_strand, [ptr = shared_from_this(), args = std::make_tuple(std::forward<Args>(args)...)]() mutable {
+      m_strand, [ptr = this->shared_from_this(), args = std::make_tuple(std::forward<Args>(args)...)]() mutable {
         return std::apply([ptr = ptr.get()](auto&&... args) { (ptr->*F)(std::move(args)...); }, std::move(args));
       });
   }

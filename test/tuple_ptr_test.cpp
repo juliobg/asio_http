@@ -59,7 +59,7 @@ TEST(shared_ptr_test, test1)
   shared.~tuple_ptr();
   EXPECT_EQ(counter, 0);
 
-  element.~tuple_element_ptr();
+  element.~tuple_ptr();
   EXPECT_EQ(counter, 2);
 }
 
@@ -77,10 +77,10 @@ TEST(shared_ptr_test, test2)
   shared.~tuple_ptr();
   EXPECT_EQ(counter, 0);
 
-  element.~tuple_element_ptr();
+  element.~tuple_ptr();
   EXPECT_EQ(counter, 0);
 
-  element2.~tuple_element_ptr();
+  element2.~tuple_ptr();
   EXPECT_EQ(counter, 0);
 
   shared2.~tuple_ptr();
