@@ -66,14 +66,15 @@ public:
 
   boost::asio::strand<boost::asio::io_context::executor_type>& m_strand;
 
-  http_content(std::shared_ptr<http_stack_shared> shared_data, boost::asio::io_context& context)
+  http_content(std::shared_ptr<http_stack_shared> shared_data, boost::asio::io_context& context, std::pair<std::string, std::uint16_t> host)
       : m_shared_data(shared_data)
       , m_timer(context)
       , m_strand(shared_data->strand)
+      , m_host(host)
   {
   }
 
-  std::pair<std::string, std::uint16_t> get_host_and_port() const override { return lower_layer->get_host_and_port(); }
+  std::pair<std::string, std::uint16_t> get_host_and_port() const override { return m_host; }
 
   void start(std::shared_ptr<const http_request>                                request,
              std::function<void(http_result_data&&, boost::system::error_code)> callback)
@@ -100,7 +101,7 @@ public:
       headers.emplace_back("Content-Length", std::to_string(m_body_source->get_size()));
     }
 
-    lower_layer->start(request->get_http_method(), request->get_url(), std::move(headers));
+    lower_layer->write_headers(request->get_http_method(), request->get_url(), std::move(headers));
   }
 
   void complete_request(const boost::system::error_code& ec)
@@ -147,6 +148,7 @@ public:
   void cancel_async() override { async<&http_content::cancel>(); }
 
 private:
+  std::pair<std::string, std::uint16_t> m_host;
   // This is a work-around as we don't have C++20 lambdas perfect capture in C++17
   template<auto F, typename... Args>
   void async(Args&&... args)

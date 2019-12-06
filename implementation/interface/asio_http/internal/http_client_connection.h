@@ -98,21 +98,20 @@ class http_client_connection
     , public shared_tuple_base<http_client_connection<N, Ls>>
 {
 public:
-  http_client_connection(std::shared_ptr<http_stack_shared> shared_data, std::pair<std::string, std::uint16_t> host);
+  http_client_connection(std::shared_ptr<http_stack_shared> shared_data);
   ~http_client_connection() override {}
 
   virtual void on_connected(const boost::system::error_code& ec) override;
   virtual void on_write(const boost::system::error_code& ec) override;
   virtual void on_read(const std::uint8_t* data, std::size_t size, boost::system::error_code ec) override;
-  std::pair<std::string, std::uint16_t> get_host_and_port() const { return m_host_port; }
   typename Ls::template type<N - 1>*    upper_layer;
   typename Ls::template type<N + 1>*    lower_layer;
 
-  void start(http_method method, url url, std::vector<std::pair<std::string, std::string>> headers);
+  void write_headers(http_method method, url url, std::vector<std::pair<std::string, std::string>> headers);
   void close() override { lower_layer->close(); }
 
 private:
-  void       start_read();
+  void       write_headers_read();
   void       write_handler(const boost::system::error_code& error, std::size_t bytes_transferred);
   void       write_body_handler(const boost::system::error_code& error, std::size_t bytes_transferred);
   void       read_handler(const boost::system::error_code& error, std::size_t bytes_transferred);
@@ -130,7 +129,6 @@ private:
 
   http_parser_settings                  m_settings;
   http_parser                           m_parser;
-  std::pair<std::string, std::uint16_t> m_host_port;
 
   request_buffers m_current_request;
 
@@ -138,13 +136,11 @@ private:
 };
 
 template<std::size_t N, typename Ls>
-inline http_client_connection<N, Ls>::http_client_connection(std::shared_ptr<http_stack_shared>    shared_data,
-                                                             std::pair<std::string, std::uint16_t> host)
+inline http_client_connection<N, Ls>::http_client_connection(std::shared_ptr<http_stack_shared>    shared_data)
     : m_shared_data(shared_data)
     , m_strand(shared_data->strand)
     , m_settings()
     , m_parser()
-    , m_host_port(host)
     , m_not_reusable(false)
 {
   http_parser_init(&m_parser, HTTP_RESPONSE);
@@ -158,7 +154,7 @@ inline http_client_connection<N, Ls>::http_client_connection(std::shared_ptr<htt
 }
 
 template<std::size_t N, typename Ls>
-inline void http_client_connection<N, Ls>::start(http_method                                      method,
+inline void http_client_connection<N, Ls>::write_headers(http_method                              method,
                                                  url                                              url,
                                                  std::vector<std::pair<std::string, std::string>> headers)
 {

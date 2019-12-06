@@ -8,6 +8,7 @@
 #include "asio_http/internal/http_client_connection.h"
 #include "asio_http/internal/http_content.h"
 #include "asio_http/internal/http_stack_shared.h"
+#include "asio_http/internal/encoding.h"
 #include "asio_http/internal/socket.h"
 #include "asio_http/internal/tuple_ptr.h"
 #include "asio_http/url.h"
@@ -80,7 +81,7 @@ auto allocate_layers(T<Ls...>*, Args&& args, std::index_sequence<I...>)
   (std::apply(
      [&ptrs](auto&&... args) {
        std::get<I>(ptrs).reset(new
-                               typename std::tuple_element<I, T<Ls...>>::type{ std::forward<decltype(args)>(args)... });
+                               typename std::tuple_element<I, T<Ls...>>::type( std::forward<decltype(args)>(args)... ));
      },
      std::get<I>(std::forward<Args>(args))),
    ...);
@@ -112,7 +113,7 @@ auto make_shared_stack(Ts... args)
 
   typename type_list::types* dummy = nullptr;
 
-  return allocate_layers(dummy, std::make_tuple(args...), std::make_index_sequence<3>());
+  return allocate_layers(dummy, std::make_tuple(args...), seq());
 }
 
 http_stack connection_pool::get_connection(const url& url, const ssl_settings& ssl)
@@ -142,17 +143,19 @@ http_stack connection_pool::create_stack(const url& url, const ssl_settings& ssl
 
   if (url.protocol == "https")
   {
-    auto stack = make_shared_stack<http_content, http_client_connection, ssl_transport>(
-      std::make_tuple(shared_data, std::reference_wrapper(m_context)),
-      std::make_tuple(shared_data, host),
+    auto stack = make_shared_stack<http_content, encoding, http_client_connection, ssl_transport>(
+      std::make_tuple(shared_data, std::reference_wrapper(m_context), host),
+      std::make_tuple(),
+      std::make_tuple(shared_data),
       std::make_tuple(shared_data, std::reference_wrapper(m_context), url.host, ssl));
     return stack.get<0>();
   }
   else
   {
-    auto stack = make_shared_stack<http_content, http_client_connection, transport>(
-      std::make_tuple(shared_data, std::reference_wrapper(m_context)),
-      std::make_tuple(shared_data, host),
+    auto stack = make_shared_stack<http_content, encoding, http_client_connection, transport>(
+      std::make_tuple(shared_data, std::reference_wrapper(m_context), host),
+      std::make_tuple(),
+      std::make_tuple(shared_data),
       std::make_tuple(shared_data, std::reference_wrapper(m_context)));
     return stack.get<0>();
   }
