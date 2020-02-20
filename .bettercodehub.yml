@@ -1,0 +1,4 @@
+exclude:
+ - /http_parser/.*
+ - /loguru/.*
+
