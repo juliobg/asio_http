@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/juliobg/asio_http.svg?branch=master)](https://travis-ci.org/juliobg/asio_http)
+[![BCH compliance](https://bettercodehub.com/edge/badge/juliobg/asio_http?branch=master)](https://bettercodehub.com/)
 
 asio_http
 =========
